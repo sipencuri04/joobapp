@@ -2,8 +2,23 @@
 
 import { cleanIndonesianPhoneNumber, extractContactsFromText } from './gemini'
 
+/** Ambil semua Groq API keys dari localStorage */
+export function getGroqApiKeys() {
+  try {
+    const raw = localStorage.getItem('autoapply_groq_api_keys')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter(k => k.trim())
+    }
+  } catch {}
+  // Fallback ke single key lama
+  const legacy = localStorage.getItem('autoapply_groq_api_key') || import.meta.env.VITE_GROQ_API_KEY || ''
+  return legacy ? [legacy] : []
+}
+
+/** Ambil key pertama (backward compat) */
 export function getGroqApiKey() {
-  return localStorage.getItem('autoapply_groq_api_key') || import.meta.env.VITE_GROQ_API_KEY || ''
+  return getGroqApiKeys()[0] || ''
 }
 
 function parseJsonSafely(rawText) {
@@ -32,7 +47,14 @@ function parseJsonSafely(rawText) {
 }
 
 /**
- * Test Groq API connection with a lightweight prompt
+ * Cek apakah error adalah rate limit (429)
+ */
+function isRateLimitError(msg = '') {
+  return msg.includes('429') || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('rate_limit')
+}
+
+/**
+ * Test Groq API connection dengan key tertentu
  */
 export async function testGroqConnection(apiKey) {
   const key = apiKey || getGroqApiKey()
@@ -80,11 +102,71 @@ export async function testGroqConnection(apiKey) {
 }
 
 /**
+ * Fetch Groq API dengan auto-rotate key saat rate limit (429)
+ * @param {string} endpoint - URL endpoint
+ * @param {object} body - request body
+ * @param {string[]} keysOverride - override keys (opsional)
+ * @returns {Promise<Response>}
+ */
+async function fetchGroqWithRotation(endpoint, body, keysOverride) {
+  const keys = keysOverride || getGroqApiKeys()
+  if (!keys.length) throw new Error('Groq API Key belum diisi. Masukkan API Key Groq di menu Pengaturan.')
+
+  let lastError = null
+
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    const key = keys[attempt]
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify(body)
+      })
+
+      if (response.ok) return response
+
+      const errorData = await response.json().catch(() => ({}))
+      const msg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`
+
+      if (isRateLimitError(msg) && keys.length > 1) {
+        console.warn(`[Groq] Key #${attempt + 1} rate limited, mencoba key berikutnya...`)
+        lastError = new Error(msg)
+        continue // coba key berikutnya
+      }
+
+      throw new Error(msg)
+    } catch (err) {
+      if (isRateLimitError(err.message) && attempt < keys.length - 1) {
+        console.warn(`[Groq] Key #${attempt + 1} rate limited, mencoba key berikutnya...`)
+        lastError = err
+        continue
+      }
+      lastError = err
+    }
+  }
+
+  throw lastError || new Error('Semua Groq API Key gagal / rate limited.')
+}
+
+/**
  * Scan job vacancy screenshot with Groq Multimodal Vision (Qwen 3.8 / Llama 3.2 Vision)
  */
-export async function analyzeJobScreenshotWithGroq(dataUrl, apiKey = '') {
-  const key = apiKey || getGroqApiKey()
-  if (!key) {
+export async function analyzeJobScreenshotWithGroq(dataUrl, apiKeyOrKeys = '') {
+  let keys = []
+  if (Array.isArray(apiKeyOrKeys) && apiKeyOrKeys.length > 0) {
+    keys = apiKeyOrKeys.filter(k => k && k.trim())
+  } else if (typeof apiKeyOrKeys === 'string' && apiKeyOrKeys.trim()) {
+    const single = apiKeyOrKeys.trim()
+    const stored = getGroqApiKeys()
+    keys = [single, ...stored.filter(k => k !== single)]
+  } else {
+    keys = getGroqApiKeys()
+  }
+
+  if (!keys.length) {
     throw new Error('Groq API Key belum diisi. Masukkan API Key Groq Anda di menu Pengaturan.')
   }
 
@@ -118,38 +200,24 @@ Pastikan nomor WhatsApp dan email diekstrak seakurat mungkin jika tertera di gam
 
   for (const model of visionModels) {
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`
-        },
-        body: JSON.stringify({
+      const response = await fetchGroqWithRotation(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
           model,
           messages: [
             {
               role: 'user',
               content: [
                 { type: 'text', text: promptText },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: dataUrl
-                  }
-                }
+                { type: 'image_url', image_url: { url: dataUrl } }
               ]
             }
           ],
           temperature: 0.1,
           response_format: { type: 'json_object' }
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const msg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`
-        throw new Error(msg)
-      }
+        },
+        keys
+      )
 
       const resData = await response.json()
       const textOutput = resData.choices?.[0]?.message?.content
@@ -158,7 +226,6 @@ Pastikan nomor WhatsApp dan email diekstrak seakurat mungkin jika tertera di gam
       const result = parseJsonSafely(textOutput)
       if (!result) throw new Error('Format output Groq bukan JSON valid.')
 
-      // Extra safeguard: regex contact extraction if empty
       if (!result.email || !result.phone) {
         const contacts = extractContactsFromText(result.rawText || '')
         if (!result.email && contacts.email) result.email = contacts.email
@@ -180,7 +247,7 @@ Pastikan nomor WhatsApp dan email diekstrak seakurat mungkin jika tertera di gam
 }
 
 /**
- * Tailor documents with Groq Llama 3.3 70B Versatile
+ * Tailor documents with Groq - dengan auto-rotate key saat rate limit
  */
 export async function tailorApplicationDocumentsWithGroq(arg1, arg2, arg3, arg4) {
   let jobData = {}
@@ -207,8 +274,18 @@ export async function tailorApplicationDocumentsWithGroq(arg1, arg2, arg3, arg4)
     }
   }
 
-  const key = apiKey || getGroqApiKey()
-  if (!key) {
+  let keys = []
+  if (Array.isArray(apiKey) && apiKey.length > 0) {
+    keys = apiKey.filter(k => k && k.trim())
+  } else if (typeof apiKey === 'string' && apiKey.trim()) {
+    const single = apiKey.trim()
+    const stored = getGroqApiKeys()
+    keys = [single, ...stored.filter(k => k !== single)]
+  } else {
+    keys = getGroqApiKeys()
+  }
+
+  if (!keys.length) {
     throw new Error('Groq API Key belum diisi.')
   }
 
@@ -269,24 +346,16 @@ Kembalikan HANYA format JSON valid berikut:
 
   for (const model of textModels) {
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`
-        },
-        body: JSON.stringify({
+      const response = await fetchGroqWithRotation(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
           model,
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.2,
           response_format: { type: 'json_object' }
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error?.message || `HTTP ${response.status}`)
-      }
+        },
+        keys
+      )
 
       const resData = await response.json()
       const textOutput = resData.choices?.[0]?.message?.content

@@ -17,7 +17,9 @@ import {
   Server,
   RefreshCw,
   Zap,
-  Cpu
+  Cpu,
+  Plus,
+  Trash2
 } from 'lucide-vue-next'
 
 const settingsStore = useSettingsStore()
@@ -25,7 +27,11 @@ const profileStore = useProfileStore()
 const appStore = useApplicationStore()
 
 const apiKeyInput = ref(settingsStore.geminiApiKey)
-const groqApiKeyInput = ref(settingsStore.groqApiKey)
+const groqApiKeysInput = ref(
+  settingsStore.groqApiKeys && settingsStore.groqApiKeys.length > 0
+    ? [...settingsStore.groqApiKeys]
+    : ['']
+)
 const aiProviderInput = ref(settingsStore.aiProvider)
 const supabaseUrlInput = ref(settingsStore.supabaseUrl)
 const supabaseKeyInput = ref(settingsStore.supabaseKey)
@@ -41,11 +47,25 @@ const testGroqSuccess = ref(null)
 const copiedSchema = ref(false)
 const saveSuccess = ref(false)
 
+function addGroqKeyField() {
+  groqApiKeysInput.value.push('')
+}
+
+function removeGroqKeyField(index) {
+  if (groqApiKeysInput.value.length > 1) {
+    groqApiKeysInput.value.splice(index, 1)
+  } else {
+    groqApiKeysInput.value[0] = ''
+  }
+}
+
 onMounted(async () => {
   if (settingsStore.hasSupabase) {
     try {
       await settingsStore.loadSettingsFromSupabase()
-      groqApiKeyInput.value = settingsStore.groqApiKey
+      groqApiKeysInput.value = settingsStore.groqApiKeys && settingsStore.groqApiKeys.length > 0
+        ? [...settingsStore.groqApiKeys]
+        : ['']
       apiKeyInput.value = settingsStore.geminiApiKey
       aiProviderInput.value = settingsStore.aiProvider
     } catch (e) {
@@ -55,8 +75,11 @@ onMounted(async () => {
 })
 
 async function handleSaveSettings() {
+  const validGroqKeys = groqApiKeysInput.value.map(k => (k || '').trim()).filter(Boolean)
+  settingsStore.setGroqApiKeys(validGroqKeys)
+  groqApiKeysInput.value = validGroqKeys.length > 0 ? [...validGroqKeys] : ['']
+
   settingsStore.setGeminiApiKey(apiKeyInput.value)
-  settingsStore.setGroqApiKey(groqApiKeyInput.value)
   settingsStore.setAiProvider(aiProviderInput.value)
   settingsStore.setSupabaseConfig(supabaseUrlInput.value, supabaseKeyInput.value)
   
@@ -76,10 +99,11 @@ async function handleSaveSettings() {
   }, 3000)
 }
 
-async function handleTestGroq() {
-  settingsStore.setGroqApiKey(groqApiKeyInput.value)
+async function handleTestGroq(targetKey = '') {
+  const validKeys = groqApiKeysInput.value.map(k => (k || '').trim()).filter(Boolean)
+  const keyToTest = targetKey.trim() || validKeys[0] || settingsStore.getActiveGroqKey()
 
-  if (!groqApiKeyInput.value.trim()) {
+  if (!keyToTest) {
     testGroqSuccess.value = false
     testGroqMessage.value = 'Groq API Key wajib diisi terlebih dahulu.'
     return
@@ -90,7 +114,7 @@ async function handleTestGroq() {
   testGroqSuccess.value = null
 
   try {
-    const ok = await settingsStore.testGroq()
+    const ok = await settingsStore.testGroq(keyToTest)
     testGroqSuccess.value = ok
     testGroqMessage.value = settingsStore.connectionStatus.groqMessage
   } catch (err) {
@@ -408,7 +432,12 @@ function handleImportBackup(e) {
             <Zap class="w-4 h-4" />
           </div>
           <div>
-            <h2 class="text-sm sm:text-base font-bold text-slate-900">Groq Cloud API Key</h2>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm sm:text-base font-bold text-slate-900">Groq Cloud API Key</h2>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                Multi-Key & Auto-Rotate
+              </span>
+            </div>
             <p class="text-xs text-slate-500">Inference LPU ultra-cepat dengan model Llama 3.2 Vision & Llama 3.3 70B</p>
           </div>
         </div>
@@ -424,25 +453,78 @@ function handleImportBackup(e) {
       </div>
 
       <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">API Key Groq (gsk_...)</label>
-          <div class="relative">
-            <input
-              v-model="groqApiKeyInput"
-              type="password"
-              placeholder="gsk_..."
-              class="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"
-            />
-            <Key class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <div class="flex items-center justify-between">
+          <label class="block text-xs font-semibold text-slate-700">
+            Daftar API Key Groq ({{ groqApiKeysInput.filter(k => k.trim()).length }} Key Terdaftar)
+          </label>
+          <span class="text-[11px] text-slate-500 hidden sm:inline">Otomatis rotasi jika limit (429)</span>
+        </div>
+
+        <!-- Multi-key input rows -->
+        <div class="space-y-2.5">
+          <div
+            v-for="(keyVal, index) in groqApiKeysInput"
+            :key="index"
+            class="flex items-center gap-2"
+          >
+            <div class="relative flex-1">
+              <div class="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                <Key class="w-4 h-4 text-slate-400" />
+                <span class="text-[10px] font-bold text-slate-400">#{{ index + 1 }}</span>
+              </div>
+              <input
+                v-model="groqApiKeysInput[index]"
+                type="password"
+                :placeholder="index === 0 ? 'gsk_... (Key Utama)' : 'gsk_... (Key Cadangan #' + (index + 1) + ')'"
+                class="w-full pl-16 pr-20 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+              <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <span 
+                  v-if="index === 0" 
+                  class="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded"
+                >
+                  Primary
+                </span>
+                <span 
+                  v-else 
+                  class="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
+                >
+                  Backup
+                </span>
+              </div>
+            </div>
+
+            <!-- Remove Button -->
+            <button
+              type="button"
+              @click="removeGroqKeyField(index)"
+              :disabled="groqApiKeysInput.length === 1 && !groqApiKeysInput[0]"
+              class="p-2.5 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 cursor-pointer"
+              title="Hapus Key ini"
+            >
+              <Trash2 class="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        <!-- Test Connection Button & Status for Groq -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+        <!-- Add New Key Button -->
+        <div class="pt-1">
           <button
-            @click="handleTestGroq"
+            type="button"
+            @click="addGroqKeyField"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 text-amber-700 hover:text-amber-800 text-xs font-semibold transition-all cursor-pointer"
+          >
+            <Plus class="w-3.5 h-3.5" />
+            <span>Tambah API Key Groq Lainnya</span>
+          </button>
+        </div>
+
+        <!-- Test Connection Button & Status for Groq -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-slate-100">
+          <button
+            @click="handleTestGroq()"
             :disabled="isTestingGroq"
-            class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 transition-colors flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
+            class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 transition-colors flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
           >
             <Zap class="w-3.5 h-3.5 text-amber-500" />
             <span>{{ isTestingGroq ? 'Menguji koneksi Groq...' : 'Uji Koneksi Groq' }}</span>
@@ -453,6 +535,17 @@ function handleImportBackup(e) {
               {{ testGroqMessage }}
             </span>
           </div>
+        </div>
+
+        <!-- Multi-key rotasi explanation box -->
+        <div class="p-3.5 bg-gradient-to-r from-amber-50/80 to-orange-50/80 rounded-xl border border-amber-200/80 text-xs text-slate-700 space-y-1.5">
+          <div class="flex items-center gap-2 font-bold text-amber-900">
+            <Zap class="w-3.5 h-3.5 text-amber-600" />
+            <span>Rotasi Multi-Key Otomatis (Anti Rate Limit)</span>
+          </div>
+          <p class="text-[11px] text-amber-900 leading-relaxed">
+            Anda dapat memasukkan beberapa API Key Groq (bisa dari akun Groq berbeda). Jika satu key mencapai batas kuota / rate limit (HTTP 429), sistem akan <strong>otomatis beralih ke key cadangan berikutnya</strong> tanpa membuat proses lamaran gagal!
+          </p>
         </div>
 
         <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">

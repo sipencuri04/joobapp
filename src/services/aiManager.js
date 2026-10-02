@@ -13,7 +13,7 @@ export async function executeJobScan(imageBase64) {
 
   if (provider === 'groq') {
     try {
-      return await analyzeJobScreenshotWithGroq(imageBase64, settings.groqApiKey)
+      return await analyzeJobScreenshotWithGroq(imageBase64, settings.groqApiKeys)
     } catch (groqErr) {
       console.warn('Groq Vision scan failed, checking fallback to Gemini...', groqErr)
       if (settings.hasGeminiKey) {
@@ -29,7 +29,7 @@ export async function executeJobScan(imageBase64) {
     } catch (geminiErr) {
       console.warn('Gemini scan failed, checking fallback to Groq...', geminiErr)
       if (settings.hasGroqKey) {
-        return await analyzeJobScreenshotWithGroq(imageBase64, settings.groqApiKey)
+        return await analyzeJobScreenshotWithGroq(imageBase64, settings.groqApiKeys)
       }
       throw geminiErr
     }
@@ -52,7 +52,7 @@ export async function executeTailorDocuments(jobInfo, applicantProfile, masterCo
         jobInfo,
         applicantProfile,
         masterCoverLetter,
-        settings.groqApiKey
+        settings.groqApiKeys
       )
     } catch (groqErr) {
       console.warn('Groq tailoring failed, checking fallback to Gemini...', groqErr)
@@ -83,7 +83,7 @@ export async function executeTailorDocuments(jobInfo, applicantProfile, masterCo
           jobInfo,
           applicantProfile,
           masterCoverLetter,
-          settings.groqApiKey
+          settings.groqApiKeys
         )
       }
       throw geminiErr
