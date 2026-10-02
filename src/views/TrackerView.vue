@@ -145,28 +145,20 @@ function exportCsv() {
         />
       </div>
 
-      <!-- Status Filters -->
-      <div class="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-        <button
-          @click="selectedStatus = 'ALL'"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
-          :class="selectedStatus === 'ALL' 
-            ? 'bg-indigo-600 text-white shadow-xs' 
-            : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200'"
+      <!-- Status Filter Dropdown -->
+      <div class="relative w-full sm:w-auto">
+        <select
+          v-model="selectedStatus"
+          class="w-full sm:w-48 appearance-none px-4 py-2 pr-9 rounded-lg text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer transition-colors hover:border-indigo-300"
         >
-          Semua ({{ appStore.applications.length }})
-        </button>
-        <button
-          v-for="st in statusOptions"
-          :key="st"
-          @click="selectedStatus = st"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
-          :class="selectedStatus === st 
-            ? 'bg-indigo-600 text-white shadow-xs' 
-            : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200'"
-        >
-          {{ st }}
-        </button>
+          <option value="ALL">🗂️ Semua ({{ appStore.applications.length }})</option>
+          <option v-for="st in statusOptions" :key="st" :value="st">{{ st }}</option>
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </div>
     </div>
 
