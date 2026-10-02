@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { testSupabaseConnection, getSupabaseClient } from '../services/supabase'
+import { testSupabaseConnection, getSupabaseClient, resetSupabaseClient } from '../services/supabase'
 import { testGroqConnection } from '../services/groq'
 
 const DEFAULT_GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
@@ -56,10 +56,13 @@ export const useSettingsStore = defineStore('settings', {
       this.supabaseKey = (key || '').trim()
       localStorage.setItem('autoapply_supabase_url', this.supabaseUrl)
       localStorage.setItem('autoapply_supabase_key', this.supabaseKey)
+      // Reset client agar rebuild dengan config terbaru
+      resetSupabaseClient()
     },
 
     /**
      * Save API Keys & Preferences to Supabase database (app_settings table)
+     * Dipanggil otomatis setiap kali handleSaveSettings()
      */
     async syncSettingsToSupabase() {
       const client = getSupabaseClient()
@@ -69,7 +72,8 @@ export const useSettingsStore = defineStore('settings', {
         const payload = [
           { key: 'groq_api_key', value: this.groqApiKey, updated_at: new Date().toISOString() },
           { key: 'gemini_api_key', value: this.geminiApiKey, updated_at: new Date().toISOString() },
-          { key: 'ai_provider', value: this.aiProvider, updated_at: new Date().toISOString() }
+          { key: 'ai_provider', value: this.aiProvider, updated_at: new Date().toISOString() },
+          { key: 'email_mode', value: this.preferredEmailMode, updated_at: new Date().toISOString() }
         ]
 
         const { error } = await client
@@ -89,6 +93,7 @@ export const useSettingsStore = defineStore('settings', {
 
     /**
      * Load API Keys & Preferences from Supabase database (app_settings table)
+     * Otomatis dipanggil saat koneksi Supabase berhasil / saat app dimuat
      */
     async loadSettingsFromSupabase() {
       const client = getSupabaseClient()
@@ -113,6 +118,10 @@ export const useSettingsStore = defineStore('settings', {
           if (item.key === 'ai_provider' && item.value) {
             this.aiProvider = item.value
             localStorage.setItem('autoapply_ai_provider', item.value)
+          }
+          if (item.key === 'email_mode' && item.value) {
+            this.preferredEmailMode = item.value
+            localStorage.setItem('autoapply_email_mode', item.value)
           }
         })
         return true

@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 let supabaseInstance = null
+let cachedUrl = null
+let cachedKey = null
 
 export function getSupabaseCredentials() {
   const url = localStorage.getItem('autoapply_supabase_url') || import.meta.env.VITE_SUPABASE_URL || ''
@@ -8,13 +10,26 @@ export function getSupabaseCredentials() {
   return { url: url.trim(), key: key.trim() }
 }
 
+/**
+ * Reset client agar dibangun ulang dengan config terbaru.
+ * Dipanggil setiap kali setSupabaseConfig() dijalankan.
+ */
+export function resetSupabaseClient() {
+  supabaseInstance = null
+  cachedUrl = null
+  cachedKey = null
+}
+
 export function getSupabaseClient() {
   const { url, key } = getSupabaseCredentials()
   if (!url || !key) return null
-  
-  if (!supabaseInstance || supabaseInstance.supabaseUrl !== url) {
+
+  // Rebuild client jika URL atau Key berubah
+  if (!supabaseInstance || cachedUrl !== url || cachedKey !== key) {
     try {
       supabaseInstance = createClient(url, key)
+      cachedUrl = url
+      cachedKey = key
     } catch (e) {
       console.error('Failed to initialize Supabase client:', e)
       return null

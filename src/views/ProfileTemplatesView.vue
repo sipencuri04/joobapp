@@ -237,73 +237,26 @@ function handleResetDefaults() {
       <span class="font-medium">{{ syncNotification }}</span>
     </div>
 
-    <!-- Navigation Tabs / Pills -->
-    <div class="flex flex-wrap gap-2 pb-1">
-      <button
-        @click="activeSection = 'portfolio'"
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
-        :class="activeSection === 'portfolio' 
-          ? 'bg-indigo-600 text-white shadow-xs' 
-          : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'"
-      >
-        <Layers class="w-3.5 h-3.5" />
-        <span>Portofolio Proyek ({{ profileStore.portfolios.length }})</span>
-      </button>
-
-      <button
-        @click="activeSection = 'profile'"
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
-        :class="activeSection === 'profile' 
-          ? 'bg-indigo-600 text-white shadow-xs' 
-          : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'"
-      >
-        <User class="w-3.5 h-3.5" />
-        <span>Data Diri & Kontak</span>
-      </button>
-
-      <button
-        @click="activeSection = 'template'"
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
-        :class="activeSection === 'template' 
-          ? 'bg-indigo-600 text-white shadow-xs' 
-          : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'"
-      >
-        <FileText class="w-3.5 h-3.5" />
-        <span>Template Surat Lamaran</span>
-      </button>
-
-      <button
-        @click="activeSection = 'experience'"
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
-        :class="activeSection === 'experience' 
-          ? 'bg-indigo-600 text-white shadow-xs' 
-          : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'"
-      >
-        <Briefcase class="w-3.5 h-3.5" />
-        <span>Pengalaman Kerja ({{ profileStore.experiences.length }})</span>
-      </button>
-
-      <button
-        @click="activeSection = 'education'"
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
-        :class="activeSection === 'education' 
-          ? 'bg-indigo-600 text-white shadow-xs' 
-          : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'"
-      >
-        <GraduationCap class="w-3.5 h-3.5" />
-        <span>Pendidikan ({{ profileStore.educations.length }})</span>
-      </button>
-
-      <button
-        @click="activeSection = 'skills'"
-        class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
-        :class="activeSection === 'skills' 
-          ? 'bg-indigo-600 text-white shadow-xs' 
-          : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'"
-      >
-        <Sparkles class="w-3.5 h-3.5" />
-        <span>Keahlian & Skill ({{ profileStore.skills.length }})</span>
-      </button>
+    <!-- Navigation Dropdown -->
+    <div class="flex items-center gap-2 pb-1">
+      <div class="relative flex-1 max-w-xs">
+        <select
+          v-model="activeSection"
+          class="w-full appearance-none px-4 py-2.5 pr-9 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-xs cursor-pointer transition-colors hover:border-indigo-300"
+        >
+          <option value="portfolio">&#x1F5C2;&#xFE0F; Portofolio Proyek ({{ profileStore.portfolios.length }})</option>
+          <option value="profile">&#x1F464; Data Diri &amp; Kontak</option>
+          <option value="template">&#x1F4C4; Template Surat Lamaran</option>
+          <option value="experience">&#x1F4BC; Pengalaman Kerja ({{ profileStore.experiences.length }})</option>
+          <option value="education">&#x1F393; Pendidikan ({{ profileStore.educations.length }})</option>
+          <option value="skills">&#x2728; Keahlian &amp; Skill ({{ profileStore.skills.length }})</option>
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
     </div>
 
     <!-- SECTION 1: PORTOFOLIO PROYEK (Primary Focus) -->
