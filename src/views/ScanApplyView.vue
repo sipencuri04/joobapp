@@ -266,17 +266,8 @@ function loadDemoSample() {
       </div>
     </transition>
 
-    <!-- Top Hero Header -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-200">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-          Scan & Apply Lowongan Kerja
-        </h1>
-        <p class="text-sm text-slate-500 mt-1">
-          Upload screenshot lowongan kerja. AI otomatis membaca kontak rekruter (Email & WA) dan menyiapkan dokumen lamaran.
-        </p>
-      </div>
-
+    <!-- Top Status Badges -->
+    <div class="flex items-center justify-end space-x-2 pb-1">
       <div class="flex items-center space-x-2">
         <span 
           class="px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
