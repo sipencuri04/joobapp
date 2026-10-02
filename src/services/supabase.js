@@ -4,6 +4,14 @@ let supabaseInstance = null
 let cachedUrl = null
 let cachedKey = null
 
+const SUPABASE_AUTH_OPTIONS = {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+}
+
 export function getSupabaseCredentials() {
   const url = localStorage.getItem('autoapply_supabase_url') || import.meta.env.VITE_SUPABASE_URL || ''
   const key = localStorage.getItem('autoapply_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -27,7 +35,7 @@ export function getSupabaseClient() {
   // Rebuild client jika URL atau Key berubah
   if (!supabaseInstance || cachedUrl !== url || cachedKey !== key) {
     try {
-      supabaseInstance = createClient(url, key)
+      supabaseInstance = createClient(url, key, SUPABASE_AUTH_OPTIONS)
       cachedUrl = url
       cachedKey = key
     } catch (e) {
@@ -45,7 +53,7 @@ export function isSupabaseConfigured() {
 
 export async function testSupabaseConnection(url, key) {
   try {
-    const testClient = createClient(url, key)
+    const testClient = createClient(url, key, SUPABASE_AUTH_OPTIONS)
     const { error } = await testClient.from('profiles').select('count', { count: 'exact', head: true })
     if (error && error.code !== 'PGRST116') {
       return { success: false, message: error.message }
