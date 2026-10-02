@@ -169,8 +169,14 @@ async function handleTestSupabase() {
     testResultMessage.value = settingsStore.connectionStatus.supabaseMessage
     
     if (ok) {
-      // Langsung fetch data dari Supabase
+      // Langsung fetch data profil & portofolio dari Supabase
       await profileStore.fetchFromSupabase()
+      // Update form input dengan data API Keys yang baru saja dimuat dari Supabase
+      groqApiKeysInput.value = settingsStore.groqApiKeys && settingsStore.groqApiKeys.length > 0
+        ? [...settingsStore.groqApiKeys]
+        : ['']
+      apiKeyInput.value = settingsStore.geminiApiKey || ''
+      aiProviderInput.value = settingsStore.aiProvider || 'groq'
     }
   } catch (err) {
     testResultSuccess.value = false
