@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useProfileStore } from '../stores/profile'
 import { useSettingsStore } from '../stores/settings'
 import { 
@@ -72,6 +72,15 @@ const newPort = ref({
   repoUrl: '',
   imageUrl: ''
 })
+
+const sections = computed(() => [
+  { key: 'portfolio', label: 'Portofolio', icon: Layers, count: profileStore.portfolios.length },
+  { key: 'profile', label: 'Data Diri', icon: User },
+  { key: 'template', label: 'Template Surat', icon: FileText },
+  { key: 'experience', label: 'Pengalaman', icon: Briefcase, count: profileStore.experiences.length },
+  { key: 'education', label: 'Pendidikan', icon: GraduationCap, count: profileStore.educations.length },
+  { key: 'skills', label: 'Skill', icon: Sparkles, count: profileStore.skills.length }
+])
 
 function triggerSave() {
   profileStore.persist()
@@ -160,15 +169,13 @@ function handleResetDefaults() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4 sm:space-y-6 pb-20 lg:pb-0">
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-200">
-      <div>
-        <div class="flex items-center space-x-2">
-          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-            CV, Portofolio & Master Data
-          </h1>
-          <span 
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 lg:pb-4 lg:border-b lg:border-slate-200">
+      <div class="min-w-0">
+        <div class="hidden lg:flex items-center gap-2">
+          <h1 class="page-title">CV, Portofolio & Master Data</h1>
+          <span
             v-if="settingsStore.hasSupabase"
             class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"
           >
@@ -176,598 +183,550 @@ function handleResetDefaults() {
             <span>Supabase Cloud</span>
           </span>
         </div>
-        <p class="text-sm text-slate-500 mt-1">
-          Kelola portofolio proyek, data profil, pengalaman, dan template surat lamaran untuk AI.
-        </p>
+        <div class="flex items-start justify-between gap-3">
+          <p class="page-subtitle !mt-0 lg:!mt-1">
+            Kelola portofolio, data profil, pengalaman & template surat untuk AI.
+          </p>
+          <button
+            @click="handleResetDefaults"
+            class="lg:hidden btn-ghost btn-sm w-10 px-0 shrink-0 -mt-1 -mr-1"
+            title="Reset ke data awal"
+            aria-label="Reset ke data awal"
+          >
+            <RotateCcw class="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <!-- TOMBOL TARIK DATA DARI SUPABASE -->
+      <!-- Aksi sekunder (sinkronisasi) -->
+      <div class="items-center gap-2" :class="settingsStore.hasSupabase ? 'flex' : 'hidden lg:flex'">
         <button
           v-if="settingsStore.hasSupabase"
           @click="handleFetchSupabase"
           :disabled="profileStore.isFetchingSupabase"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
+          class="btn-secondary btn-sm flex-1 lg:flex-none"
           title="Tarik portofolio & data terbaru dari Supabase"
         >
-          <RefreshCw class="w-3.5 h-3.5 text-indigo-600" :class="{ 'animate-spin': profileStore.isFetchingSupabase }" />
-          <span>{{ profileStore.isFetchingSupabase ? 'Memuat...' : 'Muat dari Supabase' }}</span>
+          <RefreshCw class="w-4 h-4 text-indigo-600" :class="{ 'animate-spin': profileStore.isFetchingSupabase }" />
+          <span>{{ profileStore.isFetchingSupabase ? 'Memuat...' : 'Muat' }}<span class="hidden sm:inline">{{ profileStore.isFetchingSupabase ? '' : ' dari Supabase' }}</span></span>
         </button>
 
-        <!-- SYNC KE SUPABASE -->
         <button
           v-if="settingsStore.hasSupabase"
           @click="handleSyncSupabase"
           :disabled="profileStore.isSyncing"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 transition-colors shadow-xs"
+          class="btn-soft btn-sm flex-1 lg:flex-none"
           title="Simpan profil ke tabel profiles di Supabase"
         >
-          <Database class="w-3.5 h-3.5 text-indigo-600" />
-          <span>{{ profileStore.isSyncing ? 'Menyimpan...' : 'Kirim Profil ke Supabase' }}</span>
+          <Database class="w-4 h-4" />
+          <span>{{ profileStore.isSyncing ? 'Mengirim...' : 'Kirim' }}<span class="hidden sm:inline">{{ profileStore.isSyncing ? '' : ' ke Supabase' }}</span></span>
         </button>
 
-        <!-- RESET DEFAULT -->
         <button
           @click="handleResetDefaults"
-          class="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+          class="hidden lg:inline-flex btn-ghost btn-sm shrink-0"
           title="Reset ke data awal"
         >
-          <RotateCcw class="w-3.5 h-3.5" />
+          <RotateCcw class="w-4 h-4" />
           <span>Reset</span>
         </button>
 
-        <!-- SIMPAN PERUBAHAN -->
-        <button
-          @click="triggerSave"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all"
-        >
-          <Save class="w-3.5 h-3.5" />
+        <!-- Simpan (desktop) -->
+        <button @click="triggerSave" class="hidden lg:inline-flex btn-primary btn-sm">
+          <Save class="w-4 h-4" />
           <span>Simpan Perubahan</span>
         </button>
       </div>
     </div>
 
-    <!-- Alert Notifications -->
-    <div v-if="savedNotification" class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
-      <Check class="w-4 h-4 text-emerald-600 flex-shrink-0" />
-      <span class="font-medium">Data berhasil disimpan!</span>
-    </div>
-    <div v-if="syncNotification" class="p-3 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl text-xs flex items-center gap-2">
-      <Check class="w-4 h-4 text-indigo-600 flex-shrink-0" />
+    <!-- Toast notifikasi -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="-translate-y-3 opacity-0"
+      leave-active-class="transition duration-200 ease-in"
+      leave-to-class="-translate-y-3 opacity-0"
+    >
+      <div v-if="savedNotification" class="toast bg-emerald-600 text-white" role="status">
+        <Check class="w-4 h-4 mt-0.5 shrink-0" />
+        <span>Data berhasil disimpan!</span>
+      </div>
+    </transition>
+    <div v-if="syncNotification" class="p-3 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl text-[13px] flex items-start gap-2" role="status">
+      <Check class="w-4 h-4 mt-0.5 text-indigo-600 shrink-0" />
       <span class="font-medium">{{ syncNotification }}</span>
     </div>
 
-    <!-- Navigation Dropdown -->
-    <div class="flex items-center gap-2 pb-1">
-      <div class="relative flex-1 max-w-xs">
-        <select
-          v-model="activeSection"
-          class="w-full appearance-none px-4 py-2.5 pr-9 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-xs cursor-pointer transition-colors hover:border-indigo-300"
+    <!-- Navigasi Seksi: tab chip yang bisa di-scroll -->
+    <div class="sticky top-14 lg:top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2 bg-slate-50/95 backdrop-blur-md lg:static lg:bg-transparent lg:backdrop-blur-none lg:py-0">
+      <div class="flex gap-2 overflow-x-auto hide-scrollbar lg:flex-wrap" role="tablist" aria-label="Bagian data">
+        <button
+          v-for="sec in sections"
+          :key="sec.key"
+          @click="activeSection = sec.key"
+          role="tab"
+          :aria-selected="activeSection === sec.key"
+          class="chip"
+          :class="activeSection === sec.key ? 'chip-active' : 'chip-idle'"
         >
-          <option value="portfolio">&#x1F5C2;&#xFE0F; Portofolio Proyek ({{ profileStore.portfolios.length }})</option>
-          <option value="profile">&#x1F464; Data Diri &amp; Kontak</option>
-          <option value="template">&#x1F4C4; Template Surat Lamaran</option>
-          <option value="experience">&#x1F4BC; Pengalaman Kerja ({{ profileStore.experiences.length }})</option>
-          <option value="education">&#x1F393; Pendidikan ({{ profileStore.educations.length }})</option>
-          <option value="skills">&#x2728; Keahlian &amp; Skill ({{ profileStore.skills.length }})</option>
-        </select>
-        <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
+          <component :is="sec.icon" class="w-4 h-4" />
+          <span>{{ sec.label }}</span>
+          <span v-if="sec.count !== undefined" class="text-[11px] font-bold opacity-60">{{ sec.count }}</span>
+        </button>
       </div>
     </div>
 
-    <!-- SECTION 1: PORTOFOLIO PROYEK (Primary Focus) -->
-    <div v-if="activeSection === 'portfolio'" class="clean-card p-6 sm:p-7 space-y-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-        <div>
-          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Layers class="w-4 h-4 text-indigo-600" />
-            <span>Koleksi Portofolio Proyek</span>
+    <!-- SECTION 1: PORTOFOLIO PROYEK -->
+    <section v-if="activeSection === 'portfolio'" class="clean-card card-pad space-y-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="section-title">
+            <Layers class="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Koleksi Portofolio</span>
           </h2>
-          <p class="text-xs text-slate-500 mt-0.5">
-            Daftar proyek yang dapat dipilih saat melamar pekerjaan. Data tersimpan di Supabase.
-          </p>
+          <p class="section-desc">Proyek yang dapat dipilih saat melamar. Tersimpan di Supabase.</p>
         </div>
         <button
           @click="showAddPort = !showAddPort"
-          class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors self-start sm:self-auto"
+          class="btn-primary btn-sm shrink-0"
+          :aria-expanded="showAddPort"
         >
           <Plus class="w-4 h-4" />
-          <span>Tambah Portofolio</span>
+          <span>Tambah</span>
         </button>
       </div>
 
       <!-- Add Port Form -->
-      <div v-if="showAddPort" class="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Form Portofolio Baru</h3>
+      <div v-if="showAddPort" class="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Portofolio Baru</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Judul Proyek *</label>
-            <input
-              v-model="newPort.title"
-              type="text"
-              placeholder="Contoh: Sistem Invoice"
-              class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            />
+            <label class="form-label">Judul Proyek *</label>
+            <input v-model="newPort.title" type="text" placeholder="Contoh: Sistem Invoice" class="form-input" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Kategori</label>
-            <input
-              v-model="newPort.category"
-              type="text"
-              placeholder="Contoh: Web Application / Attendance System"
-              class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            />
+            <label class="form-label">Kategori</label>
+            <input v-model="newPort.category" type="text" placeholder="Web Application" class="form-input" />
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-xs font-medium text-slate-600 mb-1">Teknologi Digunakan (pisahkan dengan koma)</label>
-            <input
-              v-model="newPort.technologiesText"
-              type="text"
-              placeholder="Contoh: PHP, CodeIgniter, MySQL, Bootstrap"
-              class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            />
+            <label class="form-label">Teknologi <span class="font-normal text-slate-400">(pisahkan dengan koma)</span></label>
+            <input v-model="newPort.technologiesText" type="text" placeholder="PHP, CodeIgniter, MySQL" class="form-input" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Live Demo URL (Opsional)</label>
-            <input
-              v-model="newPort.demoUrl"
-              type="url"
-              placeholder="https://..."
-              class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            />
+            <label class="form-label">Live Demo URL <span class="font-normal text-slate-400">(opsional)</span></label>
+            <input v-model="newPort.demoUrl" type="url" inputmode="url" placeholder="https://..." class="form-input" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Repository Git URL (Opsional)</label>
-            <input
-              v-model="newPort.repoUrl"
-              type="url"
-              placeholder="https://github.com/..."
-              class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            />
+            <label class="form-label">Repository URL <span class="font-normal text-slate-400">(opsional)</span></label>
+            <input v-model="newPort.repoUrl" type="url" inputmode="url" placeholder="https://github.com/..." class="form-input" />
           </div>
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Deskripsi Proyek</label>
-          <textarea
-            v-model="newPort.description"
-            rows="3"
-            placeholder="Jelaskan tujuan dan fungsi sistem yang Anda buat..."
-            class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          ></textarea>
+          <label class="form-label">Deskripsi Proyek</label>
+          <textarea v-model="newPort.description" rows="4" placeholder="Jelaskan tujuan dan fungsi sistem yang Anda buat..." class="form-input"></textarea>
         </div>
-        <div class="flex justify-end gap-2">
-          <button @click="showAddPort = false" class="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-200 rounded-lg">Batal</button>
-          <button @click="handleAddPort" class="px-4 py-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg">Simpan Proyek</button>
+        <div class="grid grid-cols-2 sm:flex sm:justify-end gap-2">
+          <button @click="showAddPort = false" class="btn-ghost">Batal</button>
+          <button @click="handleAddPort" :disabled="!newPort.title" class="btn-primary">Simpan Proyek</button>
         </div>
       </div>
 
-      <!-- Portfolio Cards Grid -->
-      <div v-if="profileStore.portfolios.length === 0" class="text-center py-12 border-2 border-dashed border-slate-200 rounded-xl">
+      <!-- Empty -->
+      <div v-if="profileStore.portfolios.length === 0" class="text-center py-10 px-4 border-2 border-dashed border-slate-200 rounded-2xl">
         <Layers class="w-10 h-10 text-slate-300 mx-auto mb-2" />
         <p class="text-sm font-semibold text-slate-700">Belum ada portofolio</p>
-        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-          Klik tombol "Muat dari Supabase" di atas atau klik "Tambah Portofolio".
+        <p class="text-[13px] text-slate-500 mt-1 max-w-sm mx-auto">
+          Muat dari Supabase atau klik "Tambah" untuk menambahkan proyek.
         </p>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+        <article
           v-for="port in profileStore.portfolios"
           :key="port.id"
-          class="p-5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between space-y-4"
+          class="p-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 transition-all flex flex-col gap-3"
         >
-          <div>
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <span class="inline-block text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 mb-1.5">
-                  {{ port.category || 'Web Application' }}
-                </span>
-                <h4 class="font-bold text-slate-900 text-sm leading-snug">{{ port.title }}</h4>
-              </div>
-              <button
-                @click="profileStore.deletePortfolio(port.id)"
-                class="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                title="Hapus portofolio"
-              >
-                <Trash2 class="w-4 h-4" />
-              </button>
-            </div>
-
-            <p class="text-xs text-slate-600 mt-2.5 line-clamp-3 leading-relaxed">
-              {{ port.description || 'Tidak ada deskripsi rinci.' }}
-            </p>
-
-            <!-- Tech Badges -->
-            <div class="flex flex-wrap gap-1.5 mt-3">
-              <span
-                v-for="(t, i) in port.technologies"
-                :key="i"
-                class="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium border border-slate-200/80"
-              >
-                {{ t }}
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <span class="inline-block text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 mb-1.5">
+                {{ port.category || 'Web Application' }}
               </span>
+              <h4 class="font-bold text-slate-900 text-[15px] leading-snug">{{ port.title }}</h4>
             </div>
+            <button
+              @click="profileStore.deletePortfolio(port.id)"
+              class="btn-icon-danger -mr-2 -mt-1"
+              title="Hapus portofolio"
+              aria-label="Hapus portofolio"
+            >
+              <Trash2 class="w-4 h-4" />
+            </button>
           </div>
 
-          <div class="flex items-center gap-3 pt-3 border-t border-slate-100 text-xs">
-            <a 
-              v-if="port.demoUrl" 
-              :href="port.demoUrl" 
-              target="_blank" 
-              class="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
+          <p class="text-[13px] text-slate-600 line-clamp-3 leading-relaxed">
+            {{ port.description || 'Tidak ada deskripsi rinci.' }}
+          </p>
+
+          <div v-if="port.technologies?.length" class="flex flex-wrap gap-1.5">
+            <span
+              v-for="(t, i) in port.technologies"
+              :key="i"
+              class="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium border border-slate-200/80"
             >
-              <ExternalLink class="w-3 h-3" /> Live Demo
-            </a>
-            <a 
-              v-if="port.repoUrl" 
-              :href="port.repoUrl" 
-              target="_blank" 
-              class="text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1"
+              {{ t }}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-1 pt-2 mt-auto border-t border-slate-100 text-[13px] -mb-1">
+            <a
+              v-if="port.demoUrl"
+              :href="port.demoUrl"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-1.5 min-h-[40px] px-2 -ml-2 rounded-lg text-indigo-600 hover:bg-indigo-50 font-semibold"
             >
-              <ExternalLink class="w-3 h-3" /> GitHub
+              <ExternalLink class="w-4 h-4" /> Live Demo
             </a>
-            <span v-if="!port.demoUrl && !port.repoUrl" class="text-slate-400 text-[11px]">
+            <a
+              v-if="port.repoUrl"
+              :href="port.repoUrl"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-1.5 min-h-[40px] px-2 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold"
+              :class="!port.demoUrl ? '-ml-2' : ''"
+            >
+              <ExternalLink class="w-4 h-4" /> GitHub
+            </a>
+            <span v-if="!port.demoUrl && !port.repoUrl" class="text-slate-400 text-xs py-2.5">
               Tersimpan untuk lampiran lamaran
             </span>
           </div>
-        </div>
+        </article>
       </div>
-    </div>
+    </section>
 
-    <!-- SECTION 2: DATA DIRI (Profile) -->
-    <div v-if="activeSection === 'profile'" class="clean-card p-6 sm:p-7 space-y-6">
-      <div class="border-b border-slate-100 pb-3">
-        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-          <User class="w-4 h-4 text-indigo-600" />
-          <span>Informasi Pribadi & Kontak Pelamar</span>
-        </h2>
-        <p class="text-xs text-slate-500 mt-0.5">Informasi ini otomatis dimasukkan ke header CV dan penutup surat lamaran.</p>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Nama Lengkap</label>
-          <input
-            v-model="profileStore.profile.fullName"
-            type="text"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Headline / Posisi Profesional</label>
-          <input
-            v-model="profileStore.profile.headline"
-            type="text"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Email Pribadi</label>
-          <input
-            v-model="profileStore.profile.email"
-            type="email"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Nomor Telepon / WhatsApp</label>
-          <input
-            v-model="profileStore.profile.phone"
-            type="text"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Kota Domisili</label>
-          <input
-            v-model="profileStore.profile.location"
-            type="text"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">URL Portfolio Website</label>
-          <input
-            v-model="profileStore.profile.portfolioUrl"
-            type="url"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">LinkedIn Profile URL</label>
-          <input
-            v-model="profileStore.profile.linkedin"
-            type="url"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">GitHub Profile URL</label>
-          <input
-            v-model="profileStore.profile.github"
-            type="url"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-        </div>
-      </div>
-
+    <!-- SECTION 2: DATA DIRI -->
+    <section v-if="activeSection === 'profile'" class="clean-card card-pad space-y-5">
       <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Ringkasan Diri / Bio Singkat (About Me)</label>
-        <textarea
-          v-model="profileStore.profile.bio"
-          rows="4"
-          class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed"
-        ></textarea>
-      </div>
-    </div>
-
-    <!-- SECTION 3: TEMPLATE SURAT LAMARAN MASTER -->
-    <div v-if="activeSection === 'template'" class="clean-card p-6 sm:p-7 space-y-6">
-      <div class="border-b border-slate-100 pb-3">
-        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-          <FileText class="w-4 h-4 text-indigo-600" />
-          <span>Template Dasar Surat Lamaran (Cover Letter)</span>
+        <h2 class="section-title">
+          <User class="w-4 h-4 text-indigo-600 shrink-0" />
+          <span>Data Diri & Kontak</span>
         </h2>
-        <p class="text-xs text-slate-500 mt-0.5">Template master ini akan dipersonalisasi otomatis oleh AI sesuai lowongan kerja.</p>
+        <p class="section-desc">Otomatis dimasukkan ke header CV dan penutup surat lamaran.</p>
       </div>
 
-      <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1.5">
-        <span class="font-semibold text-slate-800">Variabel Dinamis yang Tersedia:</span>
-        <div class="flex flex-wrap gap-2 pt-1 font-mono text-[11px] text-indigo-700">
-          <code class="bg-white px-2 py-0.5 rounded border border-slate-200">&#123;&#123;company&#125;&#125;</code>
-          <code class="bg-white px-2 py-0.5 rounded border border-slate-200">&#123;&#123;position&#125;&#125;</code>
-          <code class="bg-white px-2 py-0.5 rounded border border-slate-200">&#123;&#123;name&#125;&#125;</code>
-          <code class="bg-white px-2 py-0.5 rounded border border-slate-200">&#123;&#123;phone&#125;&#125;</code>
-          <code class="bg-white px-2 py-0.5 rounded border border-slate-200">&#123;&#123;email&#125;&#125;</code>
-          <code class="bg-white px-2 py-0.5 rounded border border-slate-200">&#123;&#123;date&#125;&#125;</code>
+      <div class="space-y-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Identitas</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="form-label" for="pf-name">Nama Lengkap</label>
+            <input id="pf-name" v-model="profileStore.profile.fullName" type="text" autocomplete="name" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label" for="pf-headline">Headline / Posisi Profesional</label>
+            <input id="pf-headline" v-model="profileStore.profile.headline" type="text" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label" for="pf-location">Kota Domisili</label>
+            <input id="pf-location" v-model="profileStore.profile.location" type="text" autocomplete="address-level2" class="form-input" />
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-4 pt-5 border-t border-slate-100">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Kontak</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="form-label" for="pf-email">Email Pribadi</label>
+            <input id="pf-email" v-model="profileStore.profile.email" type="email" inputmode="email" autocomplete="email" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label" for="pf-phone">Nomor Telepon / WhatsApp</label>
+            <input id="pf-phone" v-model="profileStore.profile.phone" type="tel" inputmode="tel" autocomplete="tel" class="form-input" />
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-4 pt-5 border-t border-slate-100">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Tautan</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="form-label" for="pf-web">URL Portfolio Website</label>
+            <input id="pf-web" v-model="profileStore.profile.portfolioUrl" type="url" inputmode="url" class="form-input" placeholder="https://" />
+          </div>
+          <div>
+            <label class="form-label" for="pf-li">LinkedIn Profile URL</label>
+            <input id="pf-li" v-model="profileStore.profile.linkedin" type="url" inputmode="url" class="form-input" placeholder="https://linkedin.com/in/..." />
+          </div>
+          <div>
+            <label class="form-label" for="pf-gh">GitHub Profile URL</label>
+            <input id="pf-gh" v-model="profileStore.profile.github" type="url" inputmode="url" class="form-input" placeholder="https://github.com/..." />
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-5 border-t border-slate-100">
+        <label class="form-label" for="pf-bio">Ringkasan Diri / Bio Singkat</label>
+        <textarea id="pf-bio" v-model="profileStore.profile.bio" rows="5" class="form-input"></textarea>
+      </div>
+    </section>
+
+    <!-- SECTION 3: TEMPLATE SURAT LAMARAN -->
+    <section v-if="activeSection === 'template'" class="clean-card card-pad space-y-5">
+      <div>
+        <h2 class="section-title">
+          <FileText class="w-4 h-4 text-indigo-600 shrink-0" />
+          <span>Template Surat Lamaran</span>
+        </h2>
+        <p class="section-desc">Template master ini dipersonalisasi otomatis oleh AI sesuai lowongan.</p>
+      </div>
+
+      <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 space-y-2">
+        <span class="font-semibold text-slate-800">Variabel dinamis:</span>
+        <div class="flex flex-wrap gap-1.5 font-mono text-[12px] text-indigo-700">
+          <code class="bg-white px-2 py-1 rounded-md border border-slate-200">&#123;&#123;company&#125;&#125;</code>
+          <code class="bg-white px-2 py-1 rounded-md border border-slate-200">&#123;&#123;position&#125;&#125;</code>
+          <code class="bg-white px-2 py-1 rounded-md border border-slate-200">&#123;&#123;name&#125;&#125;</code>
+          <code class="bg-white px-2 py-1 rounded-md border border-slate-200">&#123;&#123;phone&#125;&#125;</code>
+          <code class="bg-white px-2 py-1 rounded-md border border-slate-200">&#123;&#123;email&#125;&#125;</code>
+          <code class="bg-white px-2 py-1 rounded-md border border-slate-200">&#123;&#123;date&#125;&#125;</code>
         </div>
       </div>
 
       <textarea
         v-model="profileStore.masterCoverLetter"
         rows="16"
-        class="w-full p-4 rounded-xl bg-white border border-slate-300 text-slate-800 text-sm font-mono leading-relaxed focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+        class="form-input font-mono !text-[13px] sm:!text-sm"
+        aria-label="Template surat lamaran"
       ></textarea>
-    </div>
+    </section>
 
     <!-- SECTION 4: PENGALAMAN KERJA -->
-    <div v-if="activeSection === 'experience'" class="clean-card p-6 sm:p-7 space-y-6">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <div>
-          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Briefcase class="w-4 h-4 text-indigo-600" />
-            <span>Riwayat Pengalaman Kerja</span>
+    <section v-if="activeSection === 'experience'" class="clean-card card-pad space-y-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="section-title">
+            <Briefcase class="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Pengalaman Kerja</span>
           </h2>
-          <p class="text-xs text-slate-500 mt-0.5">Pengalaman ini akan disinkronkan ke dokumen CV ATS.</p>
+          <p class="section-desc">Disinkronkan ke dokumen CV ATS.</p>
         </div>
-        <button
-          @click="showAddExp = !showAddExp"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-        >
-          <Plus class="w-3.5 h-3.5" />
-          <span>Tambah Pengalaman</span>
+        <button @click="showAddExp = !showAddExp" class="btn-primary btn-sm shrink-0" :aria-expanded="showAddExp">
+          <Plus class="w-4 h-4" />
+          <span>Tambah</span>
         </button>
       </div>
 
-      <!-- Add Experience Form -->
-      <div v-if="showAddExp" class="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
-        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Tambah Pengalaman Baru</h3>
+      <div v-if="showAddExp" class="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pengalaman Baru</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input
-            v-model="newExp.company"
-            type="text"
-            placeholder="Nama Perusahaan *"
-            class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-          <input
-            v-model="newExp.role"
-            type="text"
-            placeholder="Posisi / Jabatan *"
-            class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-          <input
-            v-model="newExp.startDate"
-            type="text"
-            placeholder="Mulai (e.g. Jan 2023)"
-            class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-          <input
-            v-model="newExp.endDate"
-            type="text"
-            placeholder="Selesai (e.g. Sekarang)"
-            class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
+          <div>
+            <label class="form-label">Nama Perusahaan *</label>
+            <input v-model="newExp.company" type="text" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label">Posisi / Jabatan *</label>
+            <input v-model="newExp.role" type="text" class="form-input" />
+          </div>
+          <div class="grid grid-cols-2 gap-3 sm:contents">
+            <div>
+              <label class="form-label">Mulai</label>
+              <input v-model="newExp.startDate" type="text" placeholder="Jan 2023" class="form-input" />
+            </div>
+            <div>
+              <label class="form-label">Selesai</label>
+              <input v-model="newExp.endDate" type="text" placeholder="Sekarang" class="form-input" />
+            </div>
+          </div>
         </div>
-        <textarea
-          v-model="newExp.description"
-          rows="3"
-          placeholder="Deskripsi singkat tanggung jawab dan pencapaian..."
-          class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-        ></textarea>
-        <div class="flex justify-end gap-2">
-          <button @click="showAddExp = false" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200 rounded-lg">Batal</button>
-          <button @click="handleAddExp" class="px-4 py-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg">Simpan</button>
+        <div>
+          <label class="form-label">Deskripsi</label>
+          <textarea v-model="newExp.description" rows="4" placeholder="Tanggung jawab dan pencapaian..." class="form-input"></textarea>
+        </div>
+        <div class="grid grid-cols-2 sm:flex sm:justify-end gap-2">
+          <button @click="showAddExp = false" class="btn-ghost">Batal</button>
+          <button @click="handleAddExp" :disabled="!newExp.company || !newExp.role" class="btn-primary">Simpan</button>
         </div>
       </div>
 
-      <!-- Experience List -->
-      <div class="space-y-3">
-        <div
+      <div v-if="profileStore.experiences.length === 0 && !showAddExp" class="text-center py-10 px-4 border-2 border-dashed border-slate-200 rounded-2xl">
+        <Briefcase class="w-9 h-9 text-slate-300 mx-auto mb-2" />
+        <p class="text-sm font-semibold text-slate-700">Belum ada pengalaman kerja</p>
+      </div>
+
+      <ul class="space-y-3">
+        <li
           v-for="exp in profileStore.experiences"
           :key="exp.id"
-          class="p-4 rounded-xl bg-white border border-slate-200 flex items-start justify-between gap-4"
+          class="p-4 rounded-2xl bg-white border border-slate-200 flex items-start justify-between gap-3"
         >
-          <div>
-            <div class="flex items-center gap-2">
-              <h4 class="font-bold text-slate-900 text-sm">{{ exp.role }}</h4>
-              <span class="text-xs text-slate-400">•</span>
-              <span class="text-xs font-semibold text-indigo-700">{{ exp.company }}</span>
-            </div>
-            <p class="text-xs text-slate-500 mt-0.5">{{ exp.startDate }} - {{ exp.endDate }} {{ exp.location ? `• ${exp.location}` : '' }}</p>
-            <p class="text-xs text-slate-600 mt-2 leading-relaxed">{{ exp.description }}</p>
+          <div class="min-w-0">
+            <h4 class="font-bold text-slate-900 text-[15px] leading-snug">{{ exp.role }}</h4>
+            <p class="text-[13px] font-semibold text-indigo-700 mt-0.5">{{ exp.company }}</p>
+            <p class="text-xs text-slate-500 mt-1">{{ exp.startDate }} – {{ exp.endDate }}{{ exp.location ? ` • ${exp.location}` : '' }}</p>
+            <p v-if="exp.description" class="text-[13px] text-slate-600 mt-2 leading-relaxed">{{ exp.description }}</p>
           </div>
           <button
             @click="profileStore.deleteExperience(exp.id)"
-            class="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50"
+            class="btn-icon-danger -mr-2 -mt-1"
             title="Hapus pengalaman"
+            aria-label="Hapus pengalaman"
           >
             <Trash2 class="w-4 h-4" />
           </button>
-        </div>
-      </div>
-    </div>
+        </li>
+      </ul>
+    </section>
 
     <!-- SECTION 5: PENDIDIKAN -->
-    <div v-if="activeSection === 'education'" class="clean-card p-6 sm:p-7 space-y-6">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <div>
-          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-            <GraduationCap class="w-4 h-4 text-indigo-600" />
+    <section v-if="activeSection === 'education'" class="clean-card card-pad space-y-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="section-title">
+            <GraduationCap class="w-4 h-4 text-indigo-600 shrink-0" />
             <span>Riwayat Pendidikan</span>
           </h2>
-          <p class="text-xs text-slate-500 mt-0.5">Informasi pendidikan untuk format CV ATS.</p>
+          <p class="section-desc">Informasi pendidikan untuk format CV ATS.</p>
         </div>
-        <button
-          @click="showAddEdu = !showAddEdu"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-        >
-          <Plus class="w-3.5 h-3.5" />
-          <span>Tambah Pendidikan</span>
+        <button @click="showAddEdu = !showAddEdu" class="btn-primary btn-sm shrink-0" :aria-expanded="showAddEdu">
+          <Plus class="w-4 h-4" />
+          <span>Tambah</span>
         </button>
       </div>
 
-      <!-- Add Education Form -->
-      <div v-if="showAddEdu" class="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
-        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Tambah Riwayat Pendidikan</h3>
+      <div v-if="showAddEdu" class="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pendidikan Baru</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input
-            v-model="newEdu.institution"
-            type="text"
-            placeholder="Nama Universitas / Sekolah *"
-            class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-          <input
-            v-model="newEdu.degree"
-            type="text"
-            placeholder="Gelar (e.g. S1 / D3)"
-            class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-          <input
-            v-model="newEdu.major"
-            type="text"
-            placeholder="Jurusan (e.g. Teknik Informatika)"
-            class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-          <input
-            v-model="newEdu.year"
-            type="text"
-            placeholder="Tahun Kelulusan (e.g. 2019 - 2023)"
-            class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
+          <div class="sm:col-span-2">
+            <label class="form-label">Universitas / Sekolah *</label>
+            <input v-model="newEdu.institution" type="text" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label">Gelar</label>
+            <input v-model="newEdu.degree" type="text" placeholder="S1 / D3" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label">Jurusan</label>
+            <input v-model="newEdu.major" type="text" placeholder="Teknik Informatika" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label">Tahun</label>
+            <input v-model="newEdu.year" type="text" inputmode="numeric" placeholder="2019 - 2023" class="form-input" />
+          </div>
         </div>
-        <div class="flex justify-end gap-2 pt-2">
-          <button @click="showAddEdu = false" class="px-3 py-1.5 rounded-lg text-xs text-slate-600 hover:bg-slate-200">Batal</button>
-          <button @click="handleAddEdu" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Simpan</button>
+        <div class="grid grid-cols-2 sm:flex sm:justify-end gap-2">
+          <button @click="showAddEdu = false" class="btn-ghost">Batal</button>
+          <button @click="handleAddEdu" :disabled="!newEdu.institution" class="btn-primary">Simpan</button>
         </div>
       </div>
 
-      <!-- Education List -->
-      <div class="space-y-3">
-        <div
+      <div v-if="profileStore.educations.length === 0 && !showAddEdu" class="text-center py-10 px-4 border-2 border-dashed border-slate-200 rounded-2xl">
+        <GraduationCap class="w-9 h-9 text-slate-300 mx-auto mb-2" />
+        <p class="text-sm font-semibold text-slate-700">Belum ada riwayat pendidikan</p>
+      </div>
+
+      <ul class="space-y-3">
+        <li
           v-for="edu in profileStore.educations"
           :key="edu.id"
-          class="p-4 rounded-xl bg-white border border-slate-200 flex items-center justify-between"
+          class="p-4 rounded-2xl bg-white border border-slate-200 flex items-start justify-between gap-3"
         >
-          <div>
-            <h4 class="font-bold text-slate-900 text-sm">{{ edu.institution }}</h4>
-            <p class="text-xs text-slate-600 mt-0.5">{{ edu.degree }} {{ edu.major ? `• ${edu.major}` : '' }} ({{ edu.year }})</p>
+          <div class="min-w-0">
+            <h4 class="font-bold text-slate-900 text-[15px] leading-snug">{{ edu.institution }}</h4>
+            <p class="text-[13px] text-slate-600 mt-0.5">{{ edu.degree }}{{ edu.major ? ` • ${edu.major}` : '' }}</p>
+            <p v-if="edu.year" class="text-xs text-slate-500 mt-0.5">{{ edu.year }}</p>
           </div>
           <button
             @click="profileStore.deleteEducation(edu.id)"
-            class="text-slate-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors"
+            class="btn-icon-danger -mr-2 -mt-1"
+            title="Hapus pendidikan"
+            aria-label="Hapus pendidikan"
           >
             <Trash2 class="w-4 h-4" />
           </button>
-        </div>
-      </div>
-    </div>
+        </li>
+      </ul>
+    </section>
 
     <!-- SECTION 6: KEAHLIAN & SKILL -->
-    <div v-if="activeSection === 'skills'" class="clean-card p-6 sm:p-7 space-y-6">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <div>
-          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Sparkles class="w-4 h-4 text-indigo-600" />
-            <span>Keahlian & Kemampuan Teknis</span>
+    <section v-if="activeSection === 'skills'" class="clean-card card-pad space-y-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="section-title">
+            <Sparkles class="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Keahlian & Skill</span>
           </h2>
-          <p class="text-xs text-slate-500 mt-0.5">Skill yang akan diekstrak dan disesuaikan dengan syarat lowongan kerja.</p>
+          <p class="section-desc">Ketuk nama skill untuk menandai sebagai unggulan.</p>
         </div>
-        <button
-          @click="showAddSkill = !showAddSkill"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-        >
-          <Plus class="w-3.5 h-3.5" />
-          <span>Tambah Skill</span>
+        <button @click="showAddSkill = !showAddSkill" class="btn-primary btn-sm shrink-0" :aria-expanded="showAddSkill">
+          <Plus class="w-4 h-4" />
+          <span>Tambah</span>
         </button>
       </div>
 
-      <!-- Add Skill -->
-      <div v-if="showAddSkill" class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap gap-3 items-center">
-        <input
-          v-model="newSkill.name"
-          type="text"
-          placeholder="Nama Skill (e.g. PHP, CodeIgniter, MySQL)"
-          class="flex-1 min-w-[200px] px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-        />
-        <select
-          v-model="newSkill.category"
-          class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-        >
-          <option value="Backend">Backend</option>
-          <option value="Frontend">Frontend</option>
-          <option value="Database">Database</option>
-          <option value="Tools">Tools</option>
-          <option value="UI/UX">UI/UX</option>
-        </select>
-        <button @click="handleAddSkill" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold">Tambah</button>
-        <button @click="showAddSkill = false" class="px-3 py-2 text-slate-600 hover:bg-slate-200 text-xs rounded-lg">Batal</button>
+      <div v-if="showAddSkill" class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-[1fr_180px] gap-3">
+          <div>
+            <label class="form-label">Nama Skill</label>
+            <input v-model="newSkill.name" type="text" placeholder="PHP, MySQL, Vue.js..." class="form-input" @keyup.enter="handleAddSkill" />
+          </div>
+          <div>
+            <label class="form-label">Kategori</label>
+            <select v-model="newSkill.category" class="form-select">
+              <option value="Backend">Backend</option>
+              <option value="Frontend">Frontend</option>
+              <option value="Database">Database</option>
+              <option value="Tools">Tools</option>
+              <option value="UI/UX">UI/UX</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 sm:flex sm:justify-end gap-2">
+          <button @click="showAddSkill = false" class="btn-ghost">Batal</button>
+          <button @click="handleAddSkill" :disabled="!newSkill.name" class="btn-primary">Tambah Skill</button>
+        </div>
       </div>
 
-      <!-- Skill Badges -->
+      <div v-if="profileStore.skills.length === 0 && !showAddSkill" class="text-center py-10 px-4 border-2 border-dashed border-slate-200 rounded-2xl">
+        <Sparkles class="w-9 h-9 text-slate-300 mx-auto mb-2" />
+        <p class="text-sm font-semibold text-slate-700">Belum ada skill</p>
+      </div>
+
       <div class="flex flex-wrap gap-2">
         <div
           v-for="sk in profileStore.skills"
           :key="sk.id"
-          class="group flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all"
-          :class="sk.isHighlighted 
-            ? 'bg-indigo-50 border-indigo-200 text-indigo-800' 
+          class="group flex items-center rounded-2xl border transition-all max-w-full"
+          :class="sk.isHighlighted
+            ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
             : 'bg-white border-slate-200 text-slate-600'"
         >
-          <span
+          <button
             @click="profileStore.toggleSkillHighlight(sk.id)"
-            class="text-xs font-semibold cursor-pointer select-none"
-            :title="'Klik untuk highlight'"
+            class="min-h-[40px] py-2 pl-3.5 pr-1 text-left text-[13px] font-semibold leading-snug select-none"
+            :aria-pressed="sk.isHighlighted"
+            title="Ketuk untuk highlight"
           >
             {{ sk.name }}
-          </span>
+          </button>
+          <!-- Selalu terlihat di layar sentuh; muncul saat hover di desktop -->
           <button
             @click="profileStore.deleteSkill(sk.id)"
-            class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition-opacity"
+            class="w-9 h-10 shrink-0 flex items-center justify-center rounded-r-2xl text-slate-400 hover:text-rose-600 transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
+            :aria-label="`Hapus skill ${sk.name}`"
           >
             <Trash2 class="w-3.5 h-3.5" />
           </button>
         </div>
+      </div>
+    </section>
+
+    <!-- Mobile sticky save -->
+    <div class="mobile-action-bar">
+      <div class="max-w-3xl mx-auto">
+        <button @click="triggerSave" class="btn-primary w-full">
+          <Save class="w-4 h-4" />
+          <span>Simpan Perubahan</span>
+        </button>
       </div>
     </div>
   </div>

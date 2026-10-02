@@ -2,36 +2,195 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================
+   Design tokens & base
+   ========================================================== */
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: 4.5rem; /* sticky mobile header */
+  }
+  @media (min-width: 1024px) {
+    html { scroll-padding-top: 1.5rem; }
+  }
   body {
     @apply bg-slate-50 text-slate-800 antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    overflow-x: hidden;
+  }
+  button, [role="button"], a, label, select, summary {
+    touch-action: manipulation;
+  }
+  /* Focus ring yang jelas untuk keyboard, tidak mengganggu sentuhan */
+  :focus-visible {
+    outline: 2px solid theme('colors.indigo.500');
+    outline-offset: 2px;
+  }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none;
   }
 }
 
-/* Custom Scrollbar - Clean Light */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+@layer components {
+  /* ---------- Surface ---------- */
+  .clean-card {
+    @apply bg-white border border-slate-200/80 rounded-2xl shadow-xs;
+  }
+  .clean-card-hover {
+    @apply bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200;
+  }
+  .card-pad {
+    @apply p-4 sm:p-6;
+  }
+
+  /* ---------- Page header ---------- */
+  .page-title {
+    @apply text-xl sm:text-2xl font-bold text-slate-900 tracking-tight;
+  }
+  .page-subtitle {
+    @apply text-sm text-slate-500 mt-1 leading-relaxed;
+  }
+  .section-title {
+    @apply text-[15px] sm:text-base font-bold text-slate-900 flex items-center gap-2;
+  }
+  .section-desc {
+    @apply text-xs sm:text-[13px] text-slate-500 mt-0.5 leading-relaxed;
+  }
+
+  /* ---------- Form ---------- */
+  .form-label {
+    @apply block text-[13px] font-semibold text-slate-700 mb-1.5;
+  }
+  /* 16px di mobile agar iOS tidak auto-zoom; 14px di desktop */
+  .form-input {
+    @apply w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-base sm:text-sm placeholder:text-slate-400
+      focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none transition-colors;
+  }
+  .form-input-mono {
+    @apply font-mono;
+  }
+  textarea.form-input {
+    @apply leading-relaxed;
+  }
+  .form-select {
+    @apply form-input appearance-none pr-10 cursor-pointer bg-no-repeat;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-size: 1rem;
+    background-position: right 0.85rem center;
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-xl text-sm font-semibold whitespace-nowrap
+      transition-all duration-150 select-none active:scale-[0.97]
+      disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+  .btn-primary {
+    @apply btn bg-indigo-600 text-white shadow-xs hover:bg-indigo-700 active:bg-indigo-800;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 border border-slate-300 shadow-xs hover:bg-slate-50 active:bg-slate-100;
+  }
+  .btn-soft {
+    @apply btn bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 active:bg-indigo-200;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 active:bg-slate-200;
+  }
+  .btn-dark {
+    @apply btn bg-slate-900 text-white shadow-xs hover:bg-black active:bg-black;
+  }
+  .btn-gmail {
+    @apply btn bg-rose-600 text-white shadow-xs hover:bg-rose-700 active:bg-rose-800;
+  }
+  .btn-wa {
+    @apply btn bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 active:bg-emerald-800;
+  }
+  /* Ukuran kecil — didefinisikan setelah varian agar menimpa ukuran default */
+  .btn-sm {
+    @apply min-h-[40px] px-3 text-[13px];
+  }
+
+  /* Tombol ikon persegi 44x44 */
+  .btn-icon {
+    @apply inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-xl text-slate-500 transition-colors
+      hover:bg-slate-100 hover:text-slate-800 active:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed;
+  }
+  .btn-icon-danger {
+    @apply btn-icon text-slate-400 hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100;
+  }
+
+  /* ---------- Chips / segmented ---------- */
+  .chip {
+    @apply inline-flex items-center gap-1.5 shrink-0 min-h-[36px] px-3.5 rounded-full text-[13px] font-semibold border transition-colors select-none active:scale-[0.97];
+  }
+  .chip-active {
+    @apply bg-slate-900 text-white border-slate-900;
+  }
+  .chip-idle {
+    @apply bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:text-slate-900;
+  }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    @apply fixed z-[60] left-4 right-4 top-[4.25rem] sm:left-auto sm:right-6 sm:top-6 sm:max-w-sm
+      px-4 py-3 rounded-2xl shadow-lg flex items-start gap-2.5 text-sm font-semibold;
+  }
+
+  /* ---------- Sticky mobile action bar (di atas bottom nav) ---------- */
+  .mobile-action-bar {
+    @apply lg:hidden fixed inset-x-0 z-30 px-4 pt-3 pb-3 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-nav;
+    bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
 }
 
-/* Clean Card & Panel Helpers */
-.clean-card {
-  @apply bg-white border border-slate-200/80 rounded-xl shadow-sm;
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .scroll-x-snap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+  /* Edge-to-edge horizontal scroller di mobile */
+  .bleed-x {
+    @apply -mx-4 px-4 sm:mx-0 sm:px-0;
+  }
 }
 
-.clean-card-hover {
-  @apply bg-white border border-slate-200/80 rounded-xl shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200;
+/* Custom Scrollbar - Clean Light (desktop) */
+@media (hover: hover) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 8px;
+    border: 2px solid #f8fafc;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Print styling for PDF generation */

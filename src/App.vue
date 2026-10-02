@@ -1,14 +1,33 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
+import BottomNav from './components/BottomNav.vue'
 import { useSettingsStore } from './stores/settings'
 import { useProfileStore } from './stores/profile'
-import { Menu, Sparkles, Database, Check } from 'lucide-vue-next'
+import { Sparkles, Check, PanelRightOpen } from 'lucide-vue-next'
 
 const mobileOpen = ref(false)
+const route = useRoute()
 const settingsStore = useSettingsStore()
 const profileStore = useProfileStore()
 const autoFetchNotice = ref('')
+
+const pageTitles = {
+  '/': 'Scan & Apply',
+  '/templates': 'CV & Portofolio',
+  '/tracker': 'Job Tracker',
+  '/settings': 'Pengaturan'
+}
+const pageTitle = computed(() => pageTitles[route.path] || 'AutoApply Pro')
+
+// Tutup drawer saat berpindah halaman
+watch(() => route.path, () => { mobileOpen.value = false })
+
+// Kunci scroll body saat drawer terbuka
+watch(mobileOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
 
 onMounted(async () => {
   // Otomatis ambil data dari Supabase jika konfigurasi sudah ada
@@ -30,71 +49,72 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen bg-slate-50 text-slate-800 flex flex-col lg:flex-row font-sans selection:bg-indigo-600 selection:text-white">
-    <!-- Top Mobile Navigation Header -->
-    <header class="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
-      <div class="flex items-center space-x-3">
-        <button 
-          @click="mobileOpen = true"
-          class="p-2 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
-          aria-label="Buka Menu"
-        >
-          <Menu class="w-5 h-5" />
-        </button>
-        <div class="flex items-center space-x-2">
-          <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
-            <Sparkles class="w-4 h-4 text-white" />
+    <!-- Mobile App Bar -->
+    <header class="lg:hidden sticky top-0 z-40 h-14 bg-white/95 backdrop-blur-md border-b border-slate-200">
+      <div class="h-full max-w-3xl mx-auto px-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <router-link
+            to="/"
+            class="w-9 h-9 shrink-0 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-200"
+            aria-label="Beranda AutoApply Pro"
+          >
+            <Sparkles class="w-[18px] h-[18px]" />
+          </router-link>
+          <div class="min-w-0 leading-tight">
+            <p class="text-[11px] font-semibold text-slate-400 tracking-wide">AutoApply<span class="text-indigo-600">Pro</span></p>
+            <h1 class="text-[15px] font-bold text-slate-900 truncate">{{ pageTitle }}</h1>
           </div>
-          <span class="font-extrabold text-slate-900 tracking-tight text-sm">
-            AutoApply<span class="text-indigo-600">Pro</span>
-          </span>
         </div>
-      </div>
 
-      <div class="flex items-center space-x-2">
-        <span 
-          v-if="settingsStore.hasSupabase"
-          class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+        <button
+          @click="mobileOpen = true"
+          class="relative btn-icon -mr-2 text-slate-600"
+          aria-label="Buka panel status & menu"
         >
-          <Database class="w-3 h-3 text-emerald-600" />
-          <span>Supabase Aktif</span>
-        </span>
+          <PanelRightOpen class="w-5 h-5" />
+          <span
+            class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full ring-2 ring-white"
+            :class="settingsStore.hasSupabase && settingsStore.hasAnyAiKey ? 'bg-emerald-500' : 'bg-amber-500'"
+          />
+        </button>
       </div>
     </header>
 
-    <!-- Sidebar (Desktop & Mobile Drawer) -->
-    <Sidebar 
-      :mobile-open="mobileOpen" 
-      @close="mobileOpen = false" 
+    <!-- Sidebar (Desktop) & Drawer (Mobile) -->
+    <Sidebar
+      :mobile-open="mobileOpen"
+      @close="mobileOpen = false"
     />
 
     <!-- Main Content Area -->
     <div class="flex-1 min-w-0 flex flex-col min-h-screen">
-      <!-- Auto-fetch Notification Banner -->
-      <transition 
-        enter-active-class="transition duration-300 ease-out" 
-        enter-from-class="transform -translate-y-4 opacity-0" 
-        enter-to-class="transform translate-y-0 opacity-100"
+      <!-- Auto-fetch Notification (toast) -->
+      <transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="-translate-y-3 opacity-0"
+        enter-to-class="translate-y-0 opacity-100"
         leave-active-class="transition duration-200 ease-in"
-        leave-from-class="transform translate-y-0 opacity-100"
-        leave-to-class="transform -translate-y-4 opacity-0"
+        leave-from-class="translate-y-0 opacity-100"
+        leave-to-class="-translate-y-3 opacity-0"
       >
-        <div 
-          v-if="autoFetchNotice" 
-          class="bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-xs text-emerald-800 flex items-center justify-center space-x-2 shadow-xs"
+        <div
+          v-if="autoFetchNotice"
+          class="toast bg-emerald-600 text-white"
+          role="status"
         >
-          <Check class="w-4 h-4 text-emerald-600" />
-          <span class="font-medium">{{ autoFetchNotice }}</span>
+          <Check class="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{{ autoFetchNotice }}</span>
         </div>
       </transition>
 
       <!-- View Router -->
-      <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+      <main class="flex-1 w-full max-w-3xl lg:max-w-7xl mx-auto px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-10">
         <router-view />
       </main>
 
-      <!-- Clean Footer -->
-      <footer class="border-t border-slate-200/80 bg-white py-4 px-6 text-center text-xs text-slate-500">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <!-- Footer (desktop only — di mobile ruang layar diprioritaskan untuk konten) -->
+      <footer class="hidden lg:block border-t border-slate-200/80 bg-white py-4 px-8 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <p class="font-medium text-slate-600">
             AutoApply Pro • Sistem Otomasi Lamaran Pekerjaan (CV, Portofolio & Cover Letter)
           </p>
@@ -104,5 +124,8 @@ onMounted(async () => {
         </div>
       </footer>
     </div>
+
+    <!-- Bottom Navigation (mobile & tablet) -->
+    <BottomNav />
   </div>
 </template>

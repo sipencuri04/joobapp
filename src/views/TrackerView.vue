@@ -15,7 +15,8 @@ import {
   ExternalLink,
   ChevronDown,
   Download,
-  CheckCircle2
+  CheckCircle2,
+  Send
 } from 'lucide-vue-next'
 
 const appStore = useApplicationStore()
@@ -36,6 +37,32 @@ const filteredApplications = computed(() => {
     return matchesStatus && matchesQuery
   })
 })
+
+const statusCounts = computed(() => {
+  const counts = { ALL: appStore.applications.length }
+  statusOptions.forEach(st => { counts[st] = 0 })
+  appStore.applications.forEach(a => {
+    if (counts[a.status] !== undefined) counts[a.status]++
+  })
+  return counts
+})
+
+const isFiltering = computed(() => Boolean(searchQuery.value) || selectedStatus.value !== 'ALL')
+
+function resetFilters() {
+  searchQuery.value = ''
+  selectedStatus.value = 'ALL'
+}
+
+function getStatusDotClass(status) {
+  switch (status) {
+    case 'Applied': return 'bg-blue-500'
+    case 'Interview': return 'bg-amber-500'
+    case 'Offered': return 'bg-emerald-500'
+    case 'Rejected': return 'bg-rose-500'
+    default: return 'bg-slate-400'
+  }
+}
 
 function getStatusBadgeClass(status) {
   switch (status) {
@@ -109,265 +136,261 @@ function exportCsv() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4 sm:space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-          Job Application Tracker
-        </h1>
-        <p class="text-sm text-slate-500 mt-1">
-          Pantau seluruh status lamaran, rekruter yang telah dihubungi, dan catatan tindak lanjut.
+    <div class="flex items-start justify-between gap-3 lg:pb-4 lg:border-b lg:border-slate-200">
+      <div class="min-w-0">
+        <h1 class="page-title hidden lg:block">Job Application Tracker</h1>
+        <p class="page-subtitle !mt-0 lg:!mt-1">
+          <span class="lg:hidden">{{ appStore.applications.length }} lamaran tercatat</span>
+          <span class="hidden lg:inline">Pantau seluruh status lamaran, rekruter yang telah dihubungi, dan catatan tindak lanjut.</span>
         </p>
       </div>
+      <button
+        @click="exportCsv"
+        class="btn-secondary btn-sm shrink-0"
+        title="Export ke CSV"
+      >
+        <Download class="w-4 h-4 text-slate-500" />
+        <span>CSV</span>
+      </button>
+    </div>
 
-      <div class="flex items-center gap-2">
+    <!-- Search + Filter -->
+    <div class="space-y-3">
+      <div class="relative">
+        <Search class="w-[18px] h-[18px] text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          v-model="searchQuery"
+          type="search"
+          enterkeyhint="search"
+          placeholder="Cari perusahaan, posisi, atau email..."
+          class="form-input pl-11"
+        />
+      </div>
+
+      <!-- Status chips (scroll horizontal di mobile) -->
+      <div class="flex gap-2 overflow-x-auto hide-scrollbar bleed-x lg:flex-wrap" role="tablist" aria-label="Filter status">
         <button
-          @click="exportCsv"
-          class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors shadow-xs"
+          v-for="st in ['ALL', ...statusOptions]"
+          :key="st"
+          @click="selectedStatus = st"
+          role="tab"
+          :aria-selected="selectedStatus === st"
+          class="chip"
+          :class="selectedStatus === st ? 'chip-active' : 'chip-idle'"
         >
-          <Download class="w-3.5 h-3.5 text-slate-500" />
-          <span>Export CSV</span>
+          <span v-if="st !== 'ALL'" class="w-2 h-2 rounded-full" :class="getStatusDotClass(st)"></span>
+          <span>{{ st === 'ALL' ? 'Semua' : st }}</span>
+          <span class="text-[11px] font-bold opacity-60">{{ statusCounts[st] }}</span>
         </button>
       </div>
     </div>
 
-    <!-- Filter & Search Bar -->
-    <div class="flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
-      <!-- Search Input -->
-      <div class="relative flex-1 w-full">
-        <Search class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Cari perusahaan, posisi, atau email..."
-          class="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-        />
+    <template v-if="filteredApplications.length > 0">
+      <!-- Desktop Table View (lg) -->
+      <div class="hidden xl:block clean-card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-[13px] text-slate-700">
+            <thead class="bg-slate-50 text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+              <tr>
+                <th class="px-5 py-3.5 font-semibold min-w-[220px]">Perusahaan & Posisi</th>
+                <th class="px-4 py-3.5 font-semibold">Kontak Rekruter</th>
+                <th class="px-4 py-3.5 font-semibold">Status</th>
+                <th class="px-4 py-3.5 font-semibold min-w-[180px]">Catatan</th>
+                <th class="px-5 py-3.5 text-right font-semibold">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr
+                v-for="app in filteredApplications"
+                :key="app.id"
+                class="hover:bg-slate-50/70 transition-colors align-top"
+              >
+                <td class="px-5 py-4">
+                  <div class="font-bold text-slate-900 text-sm">{{ app.companyName }}</div>
+                  <div class="text-indigo-700 font-medium mt-0.5">{{ app.positionTitle }}</div>
+                  <div class="flex items-center gap-1.5 text-[11px] text-slate-400 mt-1.5">
+                    <Calendar class="w-3.5 h-3.5" />
+                    <span>{{ formatDate(app.appliedAt) }}</span>
+                    <span v-if="app.channelUsed" class="capitalize">• via {{ app.channelUsed }}</span>
+                  </div>
+                </td>
+
+                <td class="px-4 py-4 space-y-1">
+                  <div v-if="app.contactEmail" class="flex items-center gap-1.5 text-slate-600">
+                    <Mail class="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span class="truncate max-w-[200px]">{{ app.contactEmail }}</span>
+                  </div>
+                  <div v-if="app.contactPhone" class="flex items-center gap-1.5 text-slate-600">
+                    <Phone class="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{{ app.contactPhone }}</span>
+                  </div>
+                  <span v-if="!app.contactEmail && !app.contactPhone" class="text-slate-400">—</span>
+                </td>
+
+
+                <td class="px-4 py-4">
+                  <select
+                    :value="app.status"
+                    @change="appStore.updateApplicationStatus(app.id, $event.target.value)"
+                    class="h-9 pl-2.5 pr-7 rounded-lg text-xs font-semibold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    :class="getStatusBadgeClass(app.status)"
+                    aria-label="Ubah status"
+                  >
+                    <option v-for="st in statusOptions" :key="st" :value="st">{{ st }}</option>
+                  </select>
+                </td>
+
+                <td class="px-4 py-4">
+                  <input
+                    v-model="app.notes"
+                    @blur="appStore.updateApplicationNotes(app.id, app.notes)"
+                    placeholder="Catatan..."
+                    class="w-full h-9 bg-slate-50 px-2.5 rounded-lg text-[13px] text-slate-800 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </td>
+
+                <td class="px-5 py-3">
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      v-if="app.contactEmail"
+                      @click="openGmail(app)"
+                      class="btn-icon w-10 h-10 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                      title="Buka kembali di Gmail"
+                      aria-label="Buka di Gmail"
+                    >
+                      <Mail class="w-4 h-4" />
+                    </button>
+                    <button
+                      v-if="app.contactPhone"
+                      @click="openWhatsApp(app)"
+                      class="btn-icon w-10 h-10 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                      title="Buka kembali di WhatsApp"
+                      aria-label="Buka di WhatsApp"
+                    >
+                      <MessageSquare class="w-4 h-4" />
+                    </button>
+                    <button
+                      @click="handleDelete(app.id)"
+                      class="btn-icon-danger w-10 h-10"
+                      title="Hapus riwayat"
+                      aria-label="Hapus riwayat"
+                    >
+                      <Trash2 class="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Status Filter Dropdown -->
-      <div class="relative w-full sm:w-auto">
-        <select
-          v-model="selectedStatus"
-          class="w-full sm:w-48 appearance-none px-4 py-2 pr-9 rounded-lg text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer transition-colors hover:border-indigo-300"
+      <!-- Mobile / Tablet Card List -->
+      <ul class="xl:hidden grid grid-cols-1 md:grid-cols-2 gap-3">
+        <li
+          v-for="app in filteredApplications"
+          :key="app.id"
+          class="clean-card p-4 flex flex-col gap-3"
         >
-          <option value="ALL">🗂️ Semua ({{ appStore.applications.length }})</option>
-          <option v-for="st in statusOptions" :key="st" :value="st">{{ st }}</option>
-        </select>
-        <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
-    </div>
-
-    <!-- Desktop Table View (md:block) -->
-    <div v-if="filteredApplications.length > 0" class="hidden md:block clean-card overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs text-slate-700">
-          <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
-            <tr>
-              <th class="px-5 py-3.5 font-semibold">Perusahaan & Posisi</th>
-              <th class="px-4 py-3.5 font-semibold">Kontak Rekruter</th>
-              <th class="px-4 py-3.5 font-semibold">Tanggal</th>
-              <th class="px-4 py-3.5 font-semibold">Status</th>
-              <th class="px-4 py-3.5 font-semibold">Catatan</th>
-              <th class="px-5 py-3.5 text-right font-semibold">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr
-              v-for="app in filteredApplications"
-              :key="app.id"
-              class="hover:bg-slate-50/70 transition-colors"
+          <!-- Top: perusahaan, posisi, status -->
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="font-bold text-slate-900 text-[15px] leading-snug break-words">{{ app.companyName }}</h3>
+              <p class="text-indigo-700 font-semibold text-[13px] mt-0.5 break-words">{{ app.positionTitle }}</p>
+            </div>
+            <select
+              :value="app.status"
+              @change="appStore.updateApplicationStatus(app.id, $event.target.value)"
+              class="shrink-0 h-9 pl-3 pr-7 rounded-full text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              :class="getStatusBadgeClass(app.status)"
+              aria-label="Ubah status"
             >
-              <!-- Company & Role -->
-              <td class="px-5 py-4">
-                <div class="font-bold text-slate-900 text-sm">{{ app.companyName }}</div>
-                <div class="text-indigo-700 font-medium text-xs mt-0.5">{{ app.positionTitle }}</div>
-                <div v-if="app.channelUsed" class="text-[10px] text-slate-400 mt-1 capitalize">
-                  via {{ app.channelUsed }}
-                </div>
-              </td>
+              <option v-for="st in statusOptions" :key="st" :value="st">{{ st }}</option>
+            </select>
+          </div>
 
-              <!-- Contacts -->
-              <td class="px-4 py-4 space-y-1">
-                <div v-if="app.contactEmail" class="flex items-center gap-1.5 text-slate-600">
-                  <Mail class="w-3.5 h-3.5 text-rose-500" />
-                  <span class="truncate max-w-[180px]">{{ app.contactEmail }}</span>
-                </div>
-                <div v-if="app.contactPhone" class="flex items-center gap-1.5 text-slate-600">
-                  <Phone class="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{{ app.contactPhone }}</span>
-                </div>
-              </td>
-
-              <!-- Date -->
-              <td class="px-4 py-4 whitespace-nowrap text-slate-500">
-                <div class="flex items-center gap-1.5">
-                  <Calendar class="w-3.5 h-3.5 text-slate-400" />
-                  <span>{{ formatDate(app.appliedAt) }}</span>
-                </div>
-              </td>
-
-              <!-- Status Dropdown -->
-              <td class="px-4 py-4">
-                <select
-                  :value="app.status"
-                  @change="appStore.updateApplicationStatus(app.id, $event.target.value)"
-                  class="px-2.5 py-1 rounded-md text-xs font-semibold border cursor-pointer focus:outline-none"
-                  :class="getStatusBadgeClass(app.status)"
-                >
-                  <option v-for="st in statusOptions" :key="st" :value="st">{{ st }}</option>
-                </select>
-              </td>
-
-              <!-- Notes Input -->
-              <td class="px-4 py-4">
-                <input
-                  v-model="app.notes"
-                  @blur="appStore.updateApplicationNotes(app.id, app.notes)"
-                  placeholder="Catatan..."
-                  class="w-full bg-slate-50 px-2.5 py-1 rounded-md text-xs text-slate-800 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:outline-none"
-                />
-              </td>
-
-              <!-- Action Buttons -->
-              <td class="px-5 py-4 text-right">
-                <div class="flex items-center justify-end gap-1.5">
-                  <button
-                    v-if="app.contactEmail"
-                    @click="openGmail(app)"
-                    class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
-                    title="Buka kembali di Gmail"
-                  >
-                    <Mail class="w-4 h-4" />
-                  </button>
-
-                  <button
-                    v-if="app.contactPhone"
-                    @click="openWhatsApp(app)"
-                    class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors"
-                    title="Buka kembali di WhatsApp"
-                  >
-                    <MessageSquare class="w-4 h-4" />
-                  </button>
-
-                  <button
-                    @click="handleDelete(app.id)"
-                    class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
-                    title="Hapus riwayat"
-                  >
-                    <Trash2 class="w-4 h-4" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Mobile Card View (md:hidden) -->
-    <div v-if="filteredApplications.length > 0" class="block md:hidden space-y-3">
-      <div 
-        v-for="app in filteredApplications" 
-        :key="app.id"
-        class="clean-card p-4 space-y-3 border border-slate-200 hover:border-slate-300 transition-all shadow-xs"
-      >
-        <!-- Card Top: Company, Position & Status -->
-        <div class="flex items-start justify-between gap-2">
-          <div>
-            <h4 class="font-bold text-slate-900 text-sm leading-snug">{{ app.companyName }}</h4>
-            <p class="text-indigo-700 font-semibold text-xs mt-0.5">{{ app.positionTitle }}</p>
-            <span v-if="app.channelUsed" class="inline-block text-[10px] text-slate-400 capitalize mt-0.5">
-              via {{ app.channelUsed }}
+          <!-- Meta -->
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+            <span class="inline-flex items-center gap-1">
+              <Calendar class="w-3.5 h-3.5 text-slate-400" />
+              {{ formatDate(app.appliedAt) }}
             </span>
-          </div>
-          <!-- Status Dropdown Mobile -->
-          <select
-            :value="app.status"
-            @change="appStore.updateApplicationStatus(app.id, $event.target.value)"
-            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border cursor-pointer focus:outline-none flex-shrink-0"
-            :class="getStatusBadgeClass(app.status)"
-          >
-            <option v-for="st in statusOptions" :key="st" :value="st">{{ st }}</option>
-          </select>
-        </div>
-
-        <!-- Date & Contacts Details -->
-        <div class="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
-          <div class="flex items-center gap-1.5 text-slate-500 text-[11px]">
-            <Calendar class="w-3.5 h-3.5 text-slate-400" />
-            <span>Dilamar pada: {{ formatDate(app.appliedAt) }}</span>
+            <span v-if="app.channelUsed" class="capitalize">• via {{ app.channelUsed }}</span>
           </div>
 
-          <div v-if="app.contactEmail" class="flex items-center gap-1.5 text-slate-600">
-            <Mail class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
-            <span class="truncate">{{ app.contactEmail }}</span>
+          <div v-if="app.contactEmail || app.contactPhone" class="space-y-1 text-[13px] text-slate-600">
+            <div v-if="app.contactEmail" class="flex items-center gap-2 min-w-0">
+              <Mail class="w-4 h-4 text-rose-500 shrink-0" />
+              <span class="truncate">{{ app.contactEmail }}</span>
+            </div>
+            <div v-if="app.contactPhone" class="flex items-center gap-2">
+              <Phone class="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{{ app.contactPhone }}</span>
+            </div>
           </div>
 
-          <div v-if="app.contactPhone" class="flex items-center gap-1.5 text-slate-600">
-            <Phone class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-            <span>{{ app.contactPhone }}</span>
-          </div>
-        </div>
-
-        <!-- Notes Input Mobile -->
-        <div class="pt-1">
+          <!-- Catatan -->
           <input
             v-model="app.notes"
             @blur="appStore.updateApplicationNotes(app.id, app.notes)"
-            placeholder="Tambah catatan lamaran..."
-            class="w-full bg-slate-50 px-3 py-1.5 rounded-lg text-xs text-slate-800 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:outline-none"
+            placeholder="Tambah catatan..."
+            class="form-input bg-slate-50 focus:bg-white"
+            aria-label="Catatan lamaran"
           />
-        </div>
 
-        <!-- Actions Footer Mobile -->
-        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-          <div class="flex items-center gap-2">
+          <!-- Aksi -->
+          <div class="flex items-center gap-2 pt-3 mt-auto border-t border-slate-100">
             <button
               v-if="app.contactEmail"
               @click="openGmail(app)"
-              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium text-xs transition-colors"
+              class="btn btn-sm flex-1 bg-rose-50 text-rose-700 hover:bg-rose-100 active:bg-rose-200"
             >
-              <Mail class="w-3.5 h-3.5" />
+              <Mail class="w-4 h-4" />
               <span>Gmail</span>
             </button>
-
             <button
               v-if="app.contactPhone"
               @click="openWhatsApp(app)"
-              class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium text-xs transition-colors"
+              class="btn btn-sm flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200"
             >
-              <MessageSquare class="w-3.5 h-3.5" />
+              <MessageSquare class="w-4 h-4" />
               <span>WhatsApp</span>
             </button>
+            <div v-if="!app.contactEmail && !app.contactPhone" class="flex-1 text-xs text-slate-400">Tidak ada kontak</div>
+            <button
+              @click="handleDelete(app.id)"
+              class="btn-icon-danger"
+              title="Hapus"
+              aria-label="Hapus riwayat"
+            >
+              <Trash2 class="w-[18px] h-[18px]" />
+            </button>
           </div>
+        </li>
+      </ul>
+    </template>
 
-          <button
-            @click="handleDelete(app.id)"
-            class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-            title="Hapus"
-          >
-            <Trash2 class="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+    <!-- Tidak ada hasil filter -->
+    <div v-else-if="isFiltering && appStore.applications.length > 0" class="text-center py-12 px-4 clean-card">
+      <Search class="w-10 h-10 text-slate-300 mx-auto mb-3" />
+      <h3 class="text-base font-bold text-slate-800">Tidak ada hasil</h3>
+      <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1">Coba kata kunci lain atau ubah filter status.</p>
+      <button @click="resetFilters" class="btn-secondary mt-4">Reset Filter</button>
     </div>
 
     <!-- Empty State -->
-    <div v-else class="text-center py-16 px-4 clean-card">
-      <Briefcase class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-      <h3 class="text-base font-bold text-slate-800">Belum ada riwayat lamaran pekerjaan</h3>
-      <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-        Saat Anda memproses screenshot lowongan dan mengklik tombol kirim atau simpan, daftar lamaran akan otomatis tercatat di sini.
+    <div v-else class="text-center py-12 sm:py-16 px-5 clean-card">
+      <div class="w-14 h-14 rounded-2xl bg-slate-100 mx-auto flex items-center justify-center mb-3">
+        <Briefcase class="w-7 h-7 text-slate-400" />
+      </div>
+      <h3 class="text-base font-bold text-slate-800">Belum ada riwayat lamaran</h3>
+      <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1 leading-relaxed">
+        Saat Anda memproses screenshot lowongan dan mengklik kirim atau simpan, lamaran otomatis tercatat di sini.
       </p>
-      <router-link
-        to="/"
-        class="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-xs"
-      >
+      <router-link to="/" class="btn-primary mt-5 w-full xs:w-auto">
+        <Send class="w-4 h-4" />
         <span>Mulai Scan Sekarang</span>
       </router-link>
     </div>

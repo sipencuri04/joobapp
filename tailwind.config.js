@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        xs: '375px',
+      },
       colors: {
         brand: {
           50: '#eef2ff',
@@ -23,6 +26,16 @@ export default {
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+      },
+      boxShadow: {
+        xs: '0 1px 2px 0 rgb(15 23 42 / 0.05)',
+        nav: '0 -4px 16px -6px rgb(15 23 42 / 0.10)',
+      },
+      backdropBlur: {
+        xs: '2px',
+      },
+      spacing: {
+        'safe-b': 'env(safe-area-inset-bottom)',
       },
     },
   },

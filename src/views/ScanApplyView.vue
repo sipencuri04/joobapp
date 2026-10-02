@@ -48,22 +48,31 @@ const successMessage = ref('')
 const copiedWa = ref(false)
 
 const current = computed(() => appStore.currentJob)
+const hasJob = computed(() => Boolean(current.value.companyName || current.value.screenshotDataUrl))
+const isBusy = computed(() => appStore.isScanning || appStore.isTailoring)
+
+const docTabs = [
+  { key: 'cover_letter', label: 'Surat Lamaran', short: 'Surat', icon: FileText },
+  { key: 'cv', label: 'CV Standar ATS', short: 'CV', icon: Briefcase },
+  { key: 'portfolio', label: 'Porto Pilihan', short: 'Porto', icon: Layers },
+  { key: 'wa', label: 'Pesan WA', short: 'Pesan WA', icon: MessageSquare }
+]
 
 const activeAiBadge = computed(() => {
   if (settingsStore.effectiveAiProvider === 'groq') {
     return {
-      text: 'Groq LPU Aktif (Llama 3.2 Vision)',
+      text: 'Groq LPU Aktif',
       class: 'bg-emerald-50 text-emerald-700 border-emerald-200'
     }
   }
   if (settingsStore.effectiveAiProvider === 'gemini') {
     return {
-      text: 'Gemini AI Aktif (Gemini 3.8 Flash)',
+      text: 'Gemini AI Aktif',
       class: 'bg-indigo-50 text-indigo-700 border-indigo-200'
     }
   }
   return {
-    text: 'Mode Demo (Set API Key di Pengaturan)',
+    text: 'Mode Demo — Set API Key',
     class: 'bg-amber-50 text-amber-700 border-amber-200'
   }
 })
@@ -247,298 +256,306 @@ function loadDemoSample() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4 sm:space-y-6" :class="hasJob ? 'pb-20 lg:pb-0' : ''">
     <!-- Success Toast Notification -->
     <transition
       enter-active-class="transition duration-300 ease-out"
-      enter-from-class="transform -translate-y-4 opacity-0"
-      enter-to-class="transform translate-y-0 opacity-100"
+      enter-from-class="-translate-y-3 opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
       leave-active-class="transition duration-200 ease-in"
-      leave-from-class="transform translate-y-0 opacity-100"
-      leave-to-class="transform -translate-y-4 opacity-0"
+      leave-from-class="translate-y-0 opacity-100"
+      leave-to-class="-translate-y-3 opacity-0"
     >
-      <div 
-        v-if="showSuccessNotification" 
-        class="fixed top-5 right-5 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg flex items-center space-x-2 text-xs font-semibold"
-      >
-        <Check class="w-4 h-4" />
+      <div v-if="showSuccessNotification" class="toast bg-emerald-600 text-white" role="status">
+        <Check class="w-4 h-4 mt-0.5 shrink-0" />
         <span>{{ successMessage }}</span>
       </div>
     </transition>
 
-    <!-- Top Status Badges -->
-    <div class="flex items-center justify-end space-x-2 pb-1">
-      <div class="flex items-center space-x-2">
-        <span 
-          class="px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
+    <!-- Page header + status -->
+    <div class="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+      <div class="hidden lg:block">
+        <h1 class="page-title">Scan & Apply</h1>
+        <p class="page-subtitle">Unggah screenshot lowongan, AI menyiapkan surat, CV & pesan — lalu kirim.</p>
+      </div>
+      <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar bleed-x lg:mx-0 lg:px-0">
+        <router-link
+          to="/settings"
+          class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
           :class="activeAiBadge.class"
         >
+          <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
           {{ activeAiBadge.text }}
-        </span>
-
-        <span 
-          class="px-2.5 py-1 rounded-full text-xs font-medium border"
-          :class="settingsStore.hasSupabase 
-            ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
+        </router-link>
+        <span
+          class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+          :class="settingsStore.hasSupabase
+            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
             : 'bg-slate-100 text-slate-600 border-slate-200'"
         >
+          <Database class="w-3.5 h-3.5" />
           {{ settingsStore.hasSupabase ? `${profileStore.portfolios.length} Porto Supabase` : 'Penyimpanan Lokal' }}
         </span>
       </div>
     </div>
 
-    <!-- Upload Dropzone Card -->
-    <div class="clean-card p-6 sm:p-8">
+    <input
+      ref="fileInput"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      @change="handleFileInput"
+    />
+
+    <!-- ============ UPLOAD: mode penuh (belum ada lowongan) ============ -->
+    <div v-if="!hasJob" class="clean-card p-3 sm:p-6">
       <div
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
         @drop.prevent="handleDrop"
         @click="fileInput?.click()"
-        class="group relative border-2 border-dashed rounded-xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-150"
-        :class="isDragging 
-          ? 'border-indigo-500 bg-indigo-50/50 ring-4 ring-indigo-100' 
+        class="group relative border-2 border-dashed rounded-2xl px-5 py-8 sm:p-10 text-center cursor-pointer transition-all duration-150"
+        :class="isDragging
+          ? 'border-indigo-500 bg-indigo-50/50 ring-4 ring-indigo-100'
           : 'border-slate-300 bg-slate-50/50 hover:border-indigo-400 hover:bg-white'"
       >
-        <input
-          ref="fileInput"
-          type="file"
-          accept="image/*"
-          class="hidden"
-          @change="handleFileInput"
-        />
-
-        <div class="flex flex-col items-center justify-center space-y-3">
-          <div class="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-105 transition-transform shadow-xs">
-            <Upload class="w-6 h-6" />
+        <div class="flex flex-col items-center justify-center gap-4">
+          <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-105 transition-transform">
+            <Upload class="w-7 h-7" />
           </div>
 
-          <div>
-            <p class="text-sm font-semibold text-slate-800">
-              Tarik & Letakkan screenshot lowongan di sini, atau <span class="text-indigo-600 underline font-bold">Pilih File</span>
+          <div class="max-w-md">
+            <p class="text-base font-bold text-slate-900">
+              <span class="lg:hidden">Unggah screenshot lowongan</span>
+              <span class="hidden lg:inline">Tarik & letakkan screenshot lowongan di sini</span>
             </p>
-            <p class="text-xs text-slate-500 mt-1 flex items-center justify-center gap-1.5">
-              <ClipboardPaste class="w-3.5 h-3.5 text-indigo-600" />
-              <span>Bisa langsung tekan <kbd class="px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200 font-mono text-[10px] shadow-xs">Ctrl + V</kbd> untuk paste gambar dari clipboard!</span>
+            <p class="text-sm text-slate-500 mt-1 leading-relaxed">
+              <span class="lg:hidden">Pilih dari galeri — AI akan membaca posisi, email & nomor WA rekruter.</span>
+              <span class="hidden lg:inline-flex items-center gap-1.5">
+                <ClipboardPaste class="w-4 h-4 text-indigo-600" />
+                atau tekan <kbd class="px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200 font-mono text-[11px] shadow-xs">Ctrl + V</kbd> untuk paste dari clipboard
+              </span>
             </p>
           </div>
 
-          <div class="pt-2">
-            <button
-              type="button"
-              @click.stop="loadDemoSample"
-              class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors shadow-xs flex items-center gap-1.5"
-            >
-              <Sparkles class="w-3.5 h-3.5 text-amber-500" />
-              <span>Coba Contoh Lowongan (Demo)</span>
+          <div class="w-full max-w-xs flex flex-col gap-2.5 lg:flex-row lg:max-w-none lg:w-auto">
+            <button type="button" class="btn-primary w-full lg:w-auto" @click.stop="fileInput?.click()">
+              <ImageIcon class="w-4 h-4" />
+              <span>Pilih Screenshot</span>
+            </button>
+            <button type="button" class="btn-secondary w-full lg:w-auto" @click.stop="loadDemoSample">
+              <Sparkles class="w-4 h-4 text-amber-500" />
+              <span>Coba Contoh (Demo)</span>
             </button>
           </div>
         </div>
 
-        <!-- Scanning Loading Overlay -->
+        <!-- Loading Overlay -->
         <div
-          v-if="appStore.isScanning || appStore.isTailoring"
-          class="absolute inset-0 bg-white/90 backdrop-blur-xs rounded-xl flex flex-col items-center justify-center space-y-3 z-20"
+          v-if="isBusy"
+          class="absolute inset-0 bg-white/95 backdrop-blur-xs rounded-2xl flex flex-col items-center justify-center gap-3 z-20 px-6 text-center"
+          role="status"
+          aria-live="polite"
         >
           <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
           <p class="text-sm font-bold text-slate-800">
-            {{ appStore.isScanning ? 'AI Sedang membaca screenshot lowongan & kontak...' : 'Menyesuaikan Surat Lamaran & CV Anda...' }}
+            {{ appStore.isScanning ? 'AI sedang membaca screenshot...' : 'Menyesuaikan surat & CV Anda...' }}
           </p>
-          <p class="text-xs text-slate-500">Mendeteksi otomatis Gmail, No. HP, posisi, dan persyaratan...</p>
+          <p class="text-xs text-slate-500">Mendeteksi email, No. HP, posisi, dan persyaratan</p>
         </div>
       </div>
     </div>
 
-    <!-- Active Workspace Section (Split Screen) -->
-    <div v-if="current.companyName || current.screenshotDataUrl" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      
-      <!-- Left Column: Detected Job Details & Direct Action Buttons (lg:col-span-5) -->
-      <div class="lg:col-span-5 space-y-5">
-        
-        <!-- Detected Info Card -->
-        <div class="clean-card p-6 space-y-5">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div class="flex items-center space-x-2">
+    <!-- Empty state: alur 3 langkah -->
+    <div v-if="!hasJob" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div
+        v-for="(step, i) in [
+          { t: 'Unggah screenshot', d: 'Dari galeri, drag & drop, atau paste.', icon: Upload },
+          { t: 'AI menyesuaikan', d: 'Surat lamaran, CV & pesan WA otomatis.', icon: Sparkles },
+          { t: 'Kirim & catat', d: 'Gmail / WhatsApp, tersimpan di Tracker.', icon: Send }
+        ]"
+        :key="i"
+        class="flex sm:flex-col items-center sm:items-start gap-3 p-4 rounded-2xl bg-white border border-slate-200"
+      >
+        <div class="w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+          <component :is="step.icon" class="w-5 h-5" />
+        </div>
+        <div class="min-w-0">
+          <p class="text-sm font-bold text-slate-900"><span class="text-indigo-600 mr-1">{{ i + 1 }}.</span>{{ step.t }}</p>
+          <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">{{ step.d }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ UPLOAD: mode ringkas (lowongan aktif) ============ -->
+    <div
+      v-else
+      @dragover.prevent="isDragging = true"
+      @dragleave.prevent="isDragging = false"
+      @drop.prevent="handleDrop"
+      class="relative clean-card p-3 flex items-center gap-3 transition-all"
+      :class="isDragging ? 'ring-4 ring-indigo-100 border-indigo-400' : ''"
+    >
+      <div class="w-12 h-12 shrink-0 rounded-xl overflow-hidden bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+        <img v-if="current.screenshotDataUrl" :src="current.screenshotDataUrl" alt="" class="w-full h-full object-cover" />
+        <Building v-else class="w-5 h-5" />
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Lowongan aktif</p>
+        <p class="text-sm font-bold text-slate-900 truncate">{{ current.companyName || 'Perusahaan' }}</p>
+        <p class="text-xs text-indigo-700 font-medium truncate">{{ current.jobTitle || '—' }}</p>
+      </div>
+      <button type="button" class="btn-secondary btn-sm shrink-0" @click="fileInput?.click()">
+        <Upload class="w-4 h-4" />
+        <span>Scan Baru</span>
+      </button>
+
+      <div
+        v-if="isBusy"
+        class="absolute inset-0 bg-white/95 backdrop-blur-xs rounded-2xl flex items-center justify-center gap-3 z-20 px-4"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="w-6 h-6 border-[3px] border-indigo-600 border-t-transparent rounded-full animate-spin shrink-0"></div>
+        <p class="text-sm font-semibold text-slate-800 truncate">
+          {{ appStore.isScanning ? 'AI membaca screenshot...' : 'Menyesuaikan surat & CV...' }}
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ WORKSPACE ============ -->
+    <div v-if="hasJob" class="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6 items-start">
+
+      <!-- Left: Detail Lowongan & Aksi -->
+      <div class="xl:col-span-5 2xl:col-span-4 space-y-4">
+        <div class="clean-card p-4 sm:p-6 space-y-5">
+          <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-2">
               <Building class="w-4 h-4 text-indigo-600" />
-              <h2 class="font-bold text-sm text-slate-900">Informasi Lowongan</h2>
+              <h2 class="font-bold text-[15px] text-slate-900">Informasi Lowongan</h2>
             </div>
             <button
               @click="triggerAutoTailor()"
               :disabled="appStore.isTailoring"
-              class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 disabled:opacity-50"
+              class="btn-ghost btn-sm -mr-2 text-indigo-600"
               title="Sesuaikan ulang dengan AI"
             >
-              <RefreshCw class="w-3 h-3" :class="{'animate-spin': appStore.isTailoring}" />
+              <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': appStore.isTailoring }" />
               <span>Tailor Ulang</span>
             </button>
           </div>
 
-          <!-- Screenshot Preview Thumbnail if exists -->
-          <div v-if="current.screenshotDataUrl" class="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 max-h-48 group">
-            <img :src="current.screenshotDataUrl" alt="Job Screenshot" class="w-full h-full object-contain" />
-            <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-white/90 text-[10px] font-medium text-slate-700 shadow-xs border border-slate-200">
+          <!-- Screenshot Preview -->
+          <div v-if="current.screenshotDataUrl" class="hidden sm:block relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 max-h-48">
+            <img :src="current.screenshotDataUrl" alt="Screenshot lowongan" class="w-full h-48 object-contain" />
+            <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-white/90 text-[11px] font-medium text-slate-700 shadow-xs border border-slate-200">
               Screenshot Terbaca
             </div>
           </div>
 
-          <!-- Editable Fields Form -->
-          <div class="space-y-3.5">
+          <!-- Editable Fields -->
+          <div class="space-y-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Perusahaan / Instansi</label>
-              <input
-                v-model="current.companyName"
-                type="text"
-                class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                placeholder="Nama Perusahaan"
-              />
+              <label class="form-label" for="job-company">Perusahaan / Instansi</label>
+              <input id="job-company" v-model="current.companyName" type="text" class="form-input" placeholder="Nama Perusahaan" />
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Posisi yang Dilamar</label>
-              <input
-                v-model="current.jobTitle"
-                type="text"
-                class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                placeholder="Frontend Developer / Marketing / etc."
-              />
+              <label class="form-label" for="job-title">Posisi yang Dilamar</label>
+              <input id="job-title" v-model="current.jobTitle" type="text" class="form-input" placeholder="Frontend Developer / Marketing / dll." />
             </div>
 
-            <!-- Auto-detected Contacts Highlight Box -->
-            <div class="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-3">
+            <!-- Kontak Rekruter -->
+            <div class="p-3.5 sm:p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-4">
               <div class="text-[11px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles class="w-3.5 h-3.5 text-indigo-600" />
-                <span>Auto-Detected Kontak Rekruter</span>
+                <span>Kontak Rekruter (Auto-Detect)</span>
               </div>
 
-              <!-- Email Field with Gmail indicator -->
               <div>
-                <label class="flex items-center justify-between text-xs text-slate-600 mb-1">
-                  <span class="flex items-center gap-1 font-medium"><Mail class="w-3.5 h-3.5 text-rose-500" /> Email Rekrutmen</span>
-                  <span v-if="current.email?.toLowerCase().includes('gmail.com')" class="text-[10px] font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                <label class="flex items-center justify-between gap-2 form-label" for="job-email">
+                  <span class="flex items-center gap-1.5"><Mail class="w-4 h-4 text-rose-500" /> Email Rekrutmen</span>
+                  <span v-if="current.email?.toLowerCase().includes('gmail.com')" class="text-[11px] font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
                     Gmail
                   </span>
                 </label>
-                <input
-                  v-model="current.email"
-                  type="email"
-                  class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="rekrutmen@gmail.com"
-                />
+                <input id="job-email" v-model="current.email" type="email" inputmode="email" autocomplete="off" class="form-input" placeholder="rekrutmen@gmail.com" />
               </div>
 
-              <!-- Phone / WhatsApp Field with WhatsApp indicator -->
               <div>
-                <label class="flex items-center justify-between text-xs text-slate-600 mb-1">
-                  <span class="flex items-center gap-1 font-medium"><Phone class="w-3.5 h-3.5 text-emerald-600" /> No. WhatsApp / HP</span>
-                  <span v-if="current.phone" class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                    WhatsApp Ready
+                <label class="flex items-center justify-between gap-2 form-label" for="job-phone">
+                  <span class="flex items-center gap-1.5"><Phone class="w-4 h-4 text-emerald-600" /> No. WhatsApp / HP</span>
+                  <span v-if="current.phone" class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                    WA Ready
                   </span>
                 </label>
-                <input
-                  v-model="current.phone"
-                  type="text"
-                  class="w-full px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="08123456789 atau 62812..."
-                />
+                <input id="job-phone" v-model="current.phone" type="tel" inputmode="tel" autocomplete="off" class="form-input" placeholder="08123456789 atau 62812..." />
               </div>
             </div>
 
-            <!-- Requirements Chips -->
+            <!-- Requirements -->
             <div v-if="current.requirements?.length > 0">
-              <label class="block text-xs font-semibold text-slate-700 mb-1.5">Persyaratan Lowongan Terdeteksi:</label>
-              <ul class="space-y-1 text-xs text-slate-600">
-                <li v-for="(req, i) in current.requirements.slice(0, 4)" :key="i" class="flex items-start gap-1.5">
-                  <span class="text-indigo-600 font-bold">•</span>
-                  <span>{{ req }}</span>
+              <p class="form-label">Persyaratan Terdeteksi</p>
+              <ul class="space-y-1.5 text-[13px] text-slate-600">
+                <li v-for="(req, i) in current.requirements.slice(0, 4)" :key="i" class="flex items-start gap-2">
+                  <Check class="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                  <span class="leading-relaxed">{{ req }}</span>
                 </li>
               </ul>
             </div>
           </div>
 
-          <!-- DIRECT ACTION BUTTONS -->
+          <!-- Aksi Pengiriman -->
           <div class="pt-4 border-t border-slate-100 space-y-2.5">
-            <div class="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Aksi Langsung Pengiriman:
-            </div>
+            <p class="hidden lg:block text-xs font-bold text-slate-500 uppercase tracking-wider">Kirim Lamaran</p>
 
-            <!-- Buka Gmail Button -->
-            <button
-              @click="handleOpenGmail"
-              :disabled="!current.email"
-              class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
+            <!-- Desktop: tombol utama di kartu. Mobile: di action bar bawah -->
+            <button @click="handleOpenGmail" :disabled="!current.email" class="hidden lg:flex btn-gmail w-full min-h-[48px]">
               <Mail class="w-4 h-4" />
               <span>Kirim via Gmail Web</span>
               <ExternalLink class="w-3.5 h-3.5 opacity-80" />
             </button>
-
-            <!-- Kirim WhatsApp Button -->
-            <button
-              @click="handleOpenWhatsApp"
-              :disabled="!current.phone"
-              class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
+            <button @click="handleOpenWhatsApp" :disabled="!current.phone" class="hidden lg:flex btn-wa w-full min-h-[48px]">
               <MessageSquare class="w-4 h-4" />
               <span>Kirim via WhatsApp Web</span>
               <ExternalLink class="w-3.5 h-3.5 opacity-80" />
             </button>
 
-            <!-- Simpan ke Job Tracker -->
-            <button
-              @click="handleSaveToTracker('manual')"
-              class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors shadow-xs"
-            >
-              <Bookmark class="w-3.5 h-3.5 text-indigo-600" />
+            <button @click="handleSaveToTracker('manual')" class="btn-secondary w-full">
+              <Bookmark class="w-4 h-4 text-indigo-600" />
               <span>Simpan ke Riwayat Tracker</span>
             </button>
           </div>
         </div>
-
       </div>
 
-      <!-- Right Column: Document Workspace (lg:col-span-7) -->
-      <div class="lg:col-span-7 space-y-4">
-        
-        <!-- Navigation Tabs -->
-        <div class="flex items-center space-x-1 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto hide-scrollbar">
-          <button
-            @click="activeTab = 'cover_letter'"
-            class="flex-1 min-w-[140px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-            :class="activeTab === 'cover_letter' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-          >
-            <FileText class="w-4 h-4" />
-            <span>Surat Lamaran</span>
-          </button>
+      <!-- Right: Dokumen -->
+      <div class="xl:col-span-7 2xl:col-span-8 space-y-3 sm:space-y-4">
+        <div class="flex items-center justify-between xl:hidden pt-2">
+          <h2 class="text-[15px] font-bold text-slate-900">Dokumen Lamaran</h2>
+        </div>
 
+        <!-- Tabs: 4 kolom sama rata, ikon + label pendek di mobile -->
+        <div class="grid grid-cols-4 gap-1 p-1 bg-slate-200/60 rounded-2xl" role="tablist">
           <button
-            @click="activeTab = 'cv'"
-            class="flex-1 min-w-[140px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-            :class="activeTab === 'cv' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+            v-for="tab in docTabs"
+            :key="tab.key"
+            @click="activeTab = tab.key"
+            role="tab"
+            :aria-selected="activeTab === tab.key"
+            class="min-h-[52px] sm:min-h-[44px] px-1 sm:px-3 rounded-xl text-[11px] sm:text-[13px] font-semibold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 active:scale-[0.97]"
+            :class="activeTab === tab.key ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
           >
-            <Briefcase class="w-4 h-4" />
-            <span>CV Standar ATS</span>
-          </button>
-
-          <button
-            @click="activeTab = 'portfolio'"
-            class="flex-1 min-w-[140px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-            :class="activeTab === 'portfolio' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-          >
-            <Layers class="w-4 h-4" />
-            <span>Porto Pilihan</span>
-          </button>
-
-          <button
-            @click="activeTab = 'wa'"
-            class="flex-1 min-w-[140px] py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-            :class="activeTab === 'wa' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-          >
-            <MessageSquare class="w-4 h-4" />
-            <span>Pesan WA</span>
+            <component :is="tab.icon" class="w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0" />
+            <span class="leading-tight text-center">
+              <span class="2xl:hidden">{{ tab.short }}</span>
+              <span class="hidden 2xl:inline">{{ tab.label }}</span>
+            </span>
           </button>
         </div>
 
-        <!-- Tab 1: Surat Lamaran Preview & Editor -->
-        <div v-show="activeTab === 'cover_letter'" class="h-[80vh] min-h-[750px]">
+        <!-- Tab 1: Surat Lamaran -->
+        <div v-show="activeTab === 'cover_letter'" class="xl:h-[80vh] xl:min-h-[750px]">
           <CoverLetterPreview
             :content="current.tailoredCoverLetter"
             @update:content="current.tailoredCoverLetter = $event"
@@ -548,8 +565,8 @@ function loadDemoSample() {
           />
         </div>
 
-        <!-- Tab 2: CV Preview & Customizer -->
-        <div v-show="activeTab === 'cv'" class="h-[80vh] min-h-[750px]">
+        <!-- Tab 2: CV -->
+        <div v-show="activeTab === 'cv'" class="xl:h-[80vh] xl:min-h-[750px]">
           <CvPreview
             :profile="profileStore.profile"
             :experiences="profileStore.experiences"
@@ -562,8 +579,8 @@ function loadDemoSample() {
           />
         </div>
 
-        <!-- Tab 3: Portofolio Selector -->
-        <div v-show="activeTab === 'portfolio'" class="h-[80vh] min-h-[750px]">
+        <!-- Tab 3: Portofolio -->
+        <div v-show="activeTab === 'portfolio'" class="xl:h-[80vh] xl:min-h-[750px]">
           <PortfolioSelector
             :portfolios="profileStore.portfolios"
             :selectedIds="current.selectedPortfolioIds"
@@ -571,96 +588,77 @@ function loadDemoSample() {
           />
         </div>
 
-        <!-- Tab 4: WhatsApp Message Preview -->
-        <div v-show="activeTab === 'wa'" class="clean-card p-6 space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
-            <div class="flex items-center space-x-2">
-              <MessageSquare class="w-4 h-4 text-emerald-600" />
-              <h3 class="font-bold text-sm text-slate-900">Draft Pesan Pengantar WhatsApp</h3>
+        <!-- Tab 4: Pesan WhatsApp -->
+        <div v-show="activeTab === 'wa'" class="clean-card p-4 sm:p-6 space-y-4">
+          <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <MessageSquare class="w-4 h-4 text-emerald-600 shrink-0" />
+              <h3 class="font-bold text-sm text-slate-900 truncate">Draft Pesan WhatsApp</h3>
             </div>
-            <div class="flex items-center gap-2">
-              <button
-                @click="activeTab = 'cv'"
-                class="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors shadow-xs"
-              >
-                <FileText class="w-3.5 h-3.5 text-indigo-600" />
-                <span>Lihat & Unduh PDF CV</span>
-              </button>
-
-              <button
-                @click="copyWhatsAppMessage"
-                class="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors shadow-xs"
-              >
-                <component :is="copiedWa ? Check : Copy" class="w-3.5 h-3.5" :class="copiedWa ? 'text-emerald-600' : 'text-slate-500'" />
-                <span>{{ copiedWa ? 'Tersalin!' : 'Salin Pesan' }}</span>
-              </button>
-            </div>
+            <button @click="copyWhatsAppMessage" class="btn-secondary btn-sm shrink-0">
+              <component :is="copiedWa ? Check : Copy" class="w-4 h-4" :class="copiedWa ? 'text-emerald-600' : 'text-slate-500'" />
+              <span>{{ copiedWa ? 'Tersalin!' : 'Salin' }}</span>
+            </button>
           </div>
 
-          <!-- Panduan Alur Kirim Berkas via WA -->
-          <div class="p-3.5 bg-emerald-50/60 border border-emerald-200/90 rounded-xl text-xs space-y-1.5">
-            <div class="font-bold text-emerald-900 flex items-center gap-1.5">
-              <Check class="w-3.5 h-3.5 text-emerald-600" />
-              <span>Cara Mengirimkan CV & Portofolio via WhatsApp:</span>
-            </div>
-            <ol class="list-decimal list-inside text-emerald-800 space-y-1 text-[11px] leading-relaxed">
-              <li><strong>Unduh PDF CV:</strong> Klik tombol <em>"Lihat & Unduh PDF CV"</em> di atas atau di tab sebelah untuk menyimpan file PDF CV ATS Anda.</li>
-              <li><strong>Buka WhatsApp:</strong> Klik <em>"Buka WhatsApp Sekarang"</em> di bawah. Teks perkenalan dan ringkasan portofolio sudah terisi otomatis di chat.</li>
-              <li><strong>Lampirkan Berkas:</strong> Seret (drag & drop) file PDF CV yang diunduh ke jendela chat WhatsApp (atau klik 📎 Lampirkan Dokumen), lalu tekan Kirim!</li>
+          <!-- Panduan -->
+          <details class="group rounded-2xl bg-emerald-50/60 border border-emerald-200/90 text-[13px]" open>
+            <summary class="list-none cursor-pointer flex items-center justify-between gap-2 px-3.5 min-h-[44px] font-bold text-emerald-900">
+              <span class="flex items-center gap-1.5">
+                <Check class="w-4 h-4 text-emerald-600" />
+                Cara kirim CV & Porto via WA
+              </span>
+              <ChevronRight class="w-4 h-4 text-emerald-700 transition-transform group-open:rotate-90" />
+            </summary>
+            <ol class="list-decimal pl-8 pr-4 pb-3.5 text-emerald-800 space-y-1.5 text-xs leading-relaxed">
+              <li><strong>Unduh PDF CV</strong> di tab <em>CV</em>.</li>
+              <li><strong>Buka WhatsApp</strong> — teks perkenalan sudah terisi otomatis.</li>
+              <li><strong>Lampirkan</strong> file PDF CV (📎 Dokumen), lalu kirim.</li>
             </ol>
+          </details>
+
+          <div>
+            <label class="form-label" for="wa-message">Isi pesan (bisa disesuaikan)</label>
+            <textarea
+              id="wa-message"
+              v-model="current.tailoredWhatsAppMessage"
+              rows="10"
+              class="form-input"
+              placeholder="Tulis pesan WhatsApp..."
+            ></textarea>
           </div>
 
-          <p class="text-xs text-slate-500">
-            Pesan ini otomatis disiapkan saat Anda mengklik tombol "Buka WhatsApp Sekarang". Anda dapat menyesuaikan teksnya di bawah:
-          </p>
+          <div class="flex items-center gap-1.5 text-xs text-slate-500">
+            <Phone class="w-4 h-4 text-emerald-600" />
+            <span>Tujuan: <strong class="text-slate-700">{{ current.phone || 'Belum terdeteksi' }}</strong></span>
+          </div>
 
-          <textarea
-            v-model="current.tailoredWhatsAppMessage"
-            rows="10"
-            class="w-full p-4 rounded-xl bg-white border border-slate-300 text-slate-800 text-sm font-sans leading-relaxed focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            placeholder="Tulis pesan WhatsApp..."
-          ></textarea>
-
-          <div class="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div class="text-[11px] text-slate-500 flex items-center gap-1">
-              <Phone class="w-3.5 h-3.5 text-emerald-600" />
-              <span>Tujuan: <strong>{{ current.phone || 'Belum terdeteksi' }}</strong></span>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <button
-                @click="activeTab = 'cv'"
-                class="flex items-center gap-1.5 py-2 px-3.5 rounded-xl font-semibold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-              >
-                <FileText class="w-3.5 h-3.5" />
-                <span>Unduh PDF CV Dahulu</span>
-              </button>
-
-              <button
-                @click="handleOpenWhatsApp"
-                :disabled="!current.phone"
-                class="flex items-center gap-2 py-2 px-4 rounded-xl font-semibold text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs disabled:opacity-40"
-              >
-                <Send class="w-3.5 h-3.5" />
-                <span>Buka WhatsApp Sekarang</span>
-              </button>
-            </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button @click="activeTab = 'cv'" class="btn-secondary w-full">
+              <FileText class="w-4 h-4" />
+              <span>Unduh PDF CV Dahulu</span>
+            </button>
+            <button @click="handleOpenWhatsApp" :disabled="!current.phone" class="btn-wa w-full">
+              <Send class="w-4 h-4" />
+              <span>Buka WhatsApp Sekarang</span>
+            </button>
           </div>
         </div>
-
       </div>
-
     </div>
 
-    <!-- Empty State Prompt if no job scanned yet -->
-    <div v-else class="text-center py-16 px-4 clean-card">
-      <div class="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 mx-auto flex items-center justify-center mb-3 text-indigo-600">
-        <Briefcase class="w-7 h-7" />
+    <!-- Mobile sticky action bar: aksi utama selalu terjangkau jempol -->
+    <div v-if="hasJob" class="mobile-action-bar">
+      <div class="max-w-3xl mx-auto grid grid-cols-2 gap-2.5">
+        <button @click="handleOpenGmail" :disabled="!current.email" class="btn-gmail w-full">
+          <Mail class="w-4 h-4" />
+          <span>Gmail</span>
+        </button>
+        <button @click="handleOpenWhatsApp" :disabled="!current.phone" class="btn-wa w-full">
+          <MessageSquare class="w-4 h-4" />
+          <span>WhatsApp</span>
+        </button>
       </div>
-      <h3 class="text-base font-bold text-slate-900">Belum ada screenshot yang diunggah</h3>
-      <p class="text-xs text-slate-500 max-w-md mx-auto mt-1">
-        Silakan unggah gambar screenshot lowongan kerja di atas atau klik tombol <strong>"Coba Contoh Lowongan (Demo)"</strong> untuk melihat proses otomatisasi.
-      </p>
     </div>
   </div>
 </template>

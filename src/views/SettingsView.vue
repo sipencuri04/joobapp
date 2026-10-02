@@ -19,7 +19,8 @@ import {
   Zap,
   Cpu,
   Plus,
-  Trash2
+  Trash2,
+  ChevronRight
 } from 'lucide-vue-next'
 
 const settingsStore = useSettingsStore()
@@ -48,6 +49,24 @@ const copiedSchema = ref(false)
 const copiedSettingsSql = ref(false)
 const saveSuccess = ref(false)
 const supabaseSyncResult = ref(null)
+
+const settingsSections = [
+  { id: 'set-supabase', label: 'Supabase', icon: Database },
+  { id: 'set-ai', label: 'Mesin AI', icon: Cpu },
+  { id: 'set-groq', label: 'Groq', icon: Zap },
+  { id: 'set-gemini', label: 'Gemini', icon: Sparkles },
+  { id: 'set-backup', label: 'Backup', icon: Download }
+]
+
+function jumpTo(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+const providerOptions = [
+  { value: 'auto', title: 'Otomatis (Hybrid)', desc: 'Prioritas Groq, otomatis fallback ke Gemini jika limit.', tag: 'Rekomendasi', icon: Sparkles, tone: 'indigo' },
+  { value: 'groq', title: 'Groq LPU', desc: 'Ultra cepat (< 1 detik). Llama 3.2 Vision & Llama 3.3 70B.', tag: 'Super Fast', icon: Zap, tone: 'amber' },
+  { value: 'gemini', title: 'Google Gemini', desc: 'Multimodal Google: Gemini 3.8 Flash & 2.0 Flash.', tag: 'Standard AI', icon: Sparkles, tone: 'indigo' }
+]
 
 const settingsSql = `-- Jalankan ini di Supabase > SQL Editor untuk membuat tabel app_settings
 CREATE TABLE IF NOT EXISTS public.app_settings (
@@ -119,6 +138,8 @@ async function handleSaveSettings() {
   }
 
   saveSuccess.value = true
+  // Pastikan notifikasi hasil simpan terlihat (terutama di mobile)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
   setTimeout(() => {
     saveSuccess.value = false
   }, 8000)
@@ -306,445 +327,434 @@ function handleImportBackup(e) {
 </script>
 
 <template>
-  <div class="space-y-6 max-w-4xl">
+  <div class="space-y-4 sm:space-y-6 max-w-4xl pb-20 lg:pb-0">
     <!-- Header -->
-    <div class="pb-4 border-b border-slate-200">
-      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-        Pengaturan Integrasi Cloud & AI
-      </h1>
-      <p class="text-sm text-slate-500 mt-1">
-        Kelola koneksi Supabase untuk database portofolio serta Google Gemini API untuk penglihatan AI.
+    <div class="lg:pb-4 lg:border-b lg:border-slate-200">
+      <h1 class="page-title hidden lg:block">Pengaturan Integrasi Cloud & AI</h1>
+      <p class="page-subtitle !mt-0 lg:!mt-1">
+        Kelola koneksi Supabase (database) dan API Key AI untuk membaca lowongan.
       </p>
     </div>
 
+    <!-- Quick jump -->
+    <div class="sticky top-14 lg:top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2 bg-slate-50/95 backdrop-blur-md lg:hidden">
+      <div class="flex gap-2 overflow-x-auto hide-scrollbar">
+        <button
+          v-for="sec in settingsSections"
+          :key="sec.id"
+          @click="jumpTo(sec.id)"
+          class="chip chip-idle"
+        >
+          <component :is="sec.icon" class="w-4 h-4" />
+          <span>{{ sec.label }}</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Save Notification -->
-    <div v-if="saveSuccess" class="space-y-2">
-      <div v-if="supabaseSyncResult?.success" class="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center gap-2.5 shadow-xs">
-        <Check class="w-4 h-4 text-emerald-600 shrink-0" />
-        <div>
-          <span class="font-bold">Pengaturan Berhasil Disimpan!</span>
-          <span class="text-emerald-700 ml-1">Semua API Key telah tersinkron ke tabel <code>app_settings</code> di Supabase. Data Anda aman saat pindah device!</span>
+    <div v-if="saveSuccess" class="space-y-2" role="status" aria-live="polite">
+      <div v-if="supabaseSyncResult?.success" class="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl text-[13px] flex items-start gap-2.5">
+        <Check class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+        <div class="leading-relaxed">
+          <span class="font-bold">Pengaturan berhasil disimpan!</span>
+          <span class="text-emerald-700"> Semua API Key tersinkron ke tabel <code>app_settings</code> di Supabase — aman saat pindah device.</span>
         </div>
       </div>
 
-      <div v-else-if="supabaseSyncResult && !supabaseSyncResult.success" class="p-3.5 bg-amber-50 border border-amber-300 text-amber-950 rounded-xl text-xs space-y-2.5 shadow-xs">
+      <div v-else-if="supabaseSyncResult && !supabaseSyncResult.success" class="p-3.5 bg-amber-50 border border-amber-300 text-amber-950 rounded-2xl text-[13px]">
         <div class="flex items-start gap-2.5">
           <AlertTriangle class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <div class="space-y-1.5 flex-1">
-            <p class="font-bold text-amber-900">Pengaturan tersimpan di browser ini, namun GAGAL tersimpan ke Database Supabase!</p>
-            <p class="font-mono text-[11px] bg-amber-100/80 p-2 rounded border border-amber-200 text-amber-950 break-all">
+          <div class="space-y-2 flex-1 min-w-0">
+            <p class="font-bold text-amber-900">Tersimpan di browser ini, namun GAGAL tersimpan ke Supabase.</p>
+            <p class="font-mono text-[11px] bg-amber-100/80 p-2 rounded-lg border border-amber-200 text-amber-950 break-all">
               Error: {{ supabaseSyncResult.message }}
             </p>
-            <p class="text-[11px] text-amber-800 leading-relaxed">
-              Jika error menyatakan <em>"relation public.app_settings does not exist"</em>, artinya tabel <code>app_settings</code> belum Anda buat di Supabase. Silakan klik tombol di bawah untuk menyalin perintah SQL, lalu paste dan Run di <strong>Supabase Dashboard > SQL Editor</strong>:
+            <p class="text-xs text-amber-800 leading-relaxed">
+              Jika error menyatakan <em>"relation public.app_settings does not exist"</em>, tabel <code>app_settings</code> belum dibuat. Salin SQL di bawah, lalu Run di <strong>Supabase Dashboard › SQL Editor</strong>.
             </p>
-            <div class="flex flex-wrap items-center gap-2 pt-1">
+            <div class="grid grid-cols-1 sm:flex sm:flex-wrap gap-2 pt-1">
               <button
                 type="button"
                 @click="copySettingsSql"
-                class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                class="btn btn-sm bg-amber-600 hover:bg-amber-700 text-white"
               >
-                <component :is="copiedSettingsSql ? Check : Copy" class="w-3.5 h-3.5" />
-                <span>{{ copiedSettingsSql ? 'SQL app_settings Berhasil Disalin!' : 'Salin SQL Tabel app_settings' }}</span>
+                <component :is="copiedSettingsSql ? Check : Copy" class="w-4 h-4" />
+                <span>{{ copiedSettingsSql ? 'SQL Tersalin!' : 'Salin SQL app_settings' }}</span>
               </button>
               <a
                 href="https://supabase.com/dashboard"
                 target="_blank"
-                class="px-3 py-1.5 bg-white hover:bg-amber-50 text-amber-800 rounded-lg border border-amber-300 font-semibold text-xs flex items-center gap-1 shadow-xs transition-colors"
+                rel="noopener"
+                class="btn btn-sm bg-white hover:bg-amber-50 text-amber-800 border border-amber-300"
               >
                 <span>Buka Supabase SQL Editor</span>
-                <ExternalLink class="w-3.5 h-3.5 text-amber-600" />
+                <ExternalLink class="w-4 h-4 text-amber-600" />
               </a>
             </div>
           </div>
         </div>
       </div>
 
-      <div v-else class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
-        <Check class="w-4 h-4 text-emerald-600" />
-        <span class="font-medium">Pengaturan berhasil disimpan di browser lokal ini! (Supabase belum dikonfigurasi)</span>
+      <div v-else class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-[13px] flex items-start gap-2">
+        <Check class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+        <span class="font-medium">Pengaturan tersimpan di browser ini. (Supabase belum dikonfigurasi)</span>
       </div>
     </div>
 
-    <!-- Supabase Section (Primary) -->
-    <div class="clean-card p-6 sm:p-7 space-y-5">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
-            <Database class="w-4 h-4" />
+    <!-- Supabase -->
+    <section id="set-supabase" class="clean-card card-pad space-y-5 scroll-mt-32 lg:scroll-mt-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <div class="w-10 h-10 shrink-0 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <Database class="w-5 h-5" />
           </div>
-          <div>
-            <h2 class="text-sm sm:text-base font-bold text-slate-900">Koneksi Supabase (Database Utama)</h2>
-            <p class="text-xs text-slate-500">Menyimpan dan memuat portofolio proyek, data profil, dan riwayat lamaran</p>
+          <div class="min-w-0">
+            <h2 class="section-title">Koneksi Supabase</h2>
+            <p class="section-desc">Database utama untuk portofolio, profil, dan riwayat lamaran.</p>
           </div>
         </div>
-
-        <button
-          @click="copySqlSchema"
-          class="text-xs text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 self-start sm:self-auto"
-        >
-          <component :is="copiedSchema ? Check : Copy" class="w-3.5 h-3.5" />
+        <button @click="copySqlSchema" class="btn btn-sm bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 self-stretch sm:self-auto">
+          <component :is="copiedSchema ? Check : Copy" class="w-4 h-4" />
           <span>{{ copiedSchema ? 'SQL Tersalin!' : 'Salin SQL Schema' }}</span>
         </button>
       </div>
 
-      <div class="grid grid-cols-1 gap-4">
+      <div class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Project URL Supabase</label>
+          <label class="form-label" for="sb-url">Project URL</label>
           <input
+            id="sb-url"
             v-model="supabaseUrlInput"
-            type="text"
+            type="url"
+            inputmode="url"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
             placeholder="https://xyzcompany.supabase.co"
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            class="form-input form-input-mono"
           />
         </div>
-
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Anon / Public API Key Supabase</label>
+          <label class="form-label" for="sb-key">Anon / Public API Key</label>
           <input
+            id="sb-key"
             v-model="supabaseKeyInput"
             type="password"
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            class="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            autocomplete="off"
+            placeholder="eyJhbGciOiJIUzI1NiIs..."
+            class="form-input form-input-mono"
           />
         </div>
 
-        <!-- Test Connection Button & Status -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-          <button
-            @click="handleTestSupabase"
-            :disabled="isTestingSupabase"
-            class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 transition-colors flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
-          >
-            <Server class="w-3.5 h-3.5 text-slate-500" />
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <button @click="handleTestSupabase" :disabled="isTestingSupabase" class="btn-secondary w-full sm:w-auto">
+            <Server class="w-4 h-4 text-slate-500" :class="{ 'animate-pulse': isTestingSupabase }" />
             <span>{{ isTestingSupabase ? 'Menguji koneksi...' : 'Uji Koneksi Supabase' }}</span>
           </button>
+          <p
+            v-if="testResultSuccess !== null"
+            class="text-[13px] font-semibold px-3 py-2 rounded-xl"
+            :class="testResultSuccess ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'"
+            role="status"
+          >
+            {{ testResultMessage }}
+          </p>
+        </div>
 
-          <div v-if="testResultSuccess !== null" class="text-xs font-semibold flex items-center gap-1.5">
-            <span :class="testResultSuccess ? 'text-emerald-600' : 'text-rose-600'">
-              {{ testResultMessage }}
+        <details class="group rounded-2xl bg-slate-50 border border-slate-200 text-[13px] text-slate-600">
+          <summary class="list-none cursor-pointer flex items-center justify-between gap-2 px-3.5 min-h-[48px] font-semibold text-slate-800">
+            <span class="flex items-center gap-2">
+              <Sparkles class="w-4 h-4 text-emerald-600 shrink-0" />
+              Tips: auto-connect di semua device
             </span>
+            <ChevronRight class="w-4 h-4 text-slate-400 transition-transform group-open:rotate-90 shrink-0" />
+          </summary>
+          <div class="px-3.5 pb-3.5 space-y-2 text-xs leading-relaxed">
+            <p>Agar tidak perlu mengetik ulang URL & Anon Key setiap membuka dari HP atau laptop lain:</p>
+            <ol class="list-decimal pl-5 space-y-1.5">
+              <li>Buka <a href="https://vercel.com" target="_blank" rel="noopener" class="text-emerald-700 underline font-semibold">Vercel Dashboard</a> › project <strong>joobapp</strong> › <strong>Settings</strong> › <strong>Environment Variables</strong>.</li>
+              <li>Tambahkan:
+                <div class="mt-1 space-y-1">
+                  <code class="block w-fit bg-slate-200 px-1.5 py-0.5 rounded text-[11px] font-mono break-all">VITE_SUPABASE_URL</code>
+                  <code class="block w-fit bg-slate-200 px-1.5 py-0.5 rounded text-[11px] font-mono break-all">VITE_SUPABASE_ANON_KEY</code>
+                </div>
+              </li>
+              <li>Semua device yang membuka website otomatis tersambung ke database Anda.</li>
+            </ol>
           </div>
-        </div>
-
-        <!-- Multi-device Supabase Tips -->
-        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1.5">
-          <p class="font-bold text-slate-800 flex items-center gap-1.5">
-            <Sparkles class="w-3.5 h-3.5 text-emerald-600" />
-            <span>Tips: Agar Supabase URL & Anon Key Otomatis Terhubung di Semua Device</span>
-          </p>
-          <p class="text-[11px] leading-relaxed text-slate-600">
-            Supabase URL & Anon Key adalah kredensial utama untuk membuka database. Agar Anda <strong>tidak perlu mengetik ulang</strong> setiap membuka dari HP atau laptop lain:
-          </p>
-          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-600">
-            <li>Buka <a href="https://vercel.com" target="_blank" class="text-emerald-700 underline font-semibold">Vercel Dashboard</a> > pilih project <strong>joobapp</strong> > <strong>Settings</strong> > <strong>Environment Variables</strong>.</li>
-            <li>Tambahkan 2 variabel:
-              <br/><code class="bg-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">VITE_SUPABASE_URL</code> = URL Supabase Anda
-              <br/><code class="bg-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">VITE_SUPABASE_ANON_KEY</code> = Anon Key Supabase Anda
-            </li>
-            <li>Setelah itu, semua device yang membuka website otomatis langsung tersambung ke database Supabase Anda!</li>
-          </ol>
-        </div>
+        </details>
       </div>
-    </div>
+    </section>
 
-    <!-- AI Engine Selection (Groq vs Gemini) -->
-    <div class="clean-card p-6 sm:p-7 space-y-4">
-      <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-8 h-8 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600">
-            <Cpu class="w-4 h-4" />
-          </div>
-          <div>
-            <h2 class="text-sm sm:text-base font-bold text-slate-900">Mesin AI Utama (AI Provider)</h2>
-            <p class="text-xs text-slate-500">Pilih provider AI yang ingin digunakan untuk membaca gambar lowongan dan mempersonalisasi surat</p>
-          </div>
+    <!-- AI Provider -->
+    <section id="set-ai" class="clean-card card-pad space-y-4 scroll-mt-32 lg:scroll-mt-6">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 shrink-0 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600">
+          <Cpu class="w-5 h-5" />
+        </div>
+        <div class="min-w-0">
+          <h2 class="section-title">Mesin AI Utama</h2>
+          <p class="section-desc">Provider untuk membaca gambar lowongan dan mempersonalisasi surat.</p>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <!-- Option Auto -->
-        <label 
-          class="p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between"
-          :class="aiProviderInput === 'auto' 
-            ? 'border-indigo-600 bg-indigo-50/40 text-indigo-950 shadow-xs' 
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3" role="radiogroup" aria-label="Pilih provider AI">
+        <label
+          v-for="opt in providerOptions"
+          :key="opt.value"
+          class="relative p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex sm:flex-col gap-3 sm:gap-2 active:scale-[0.99] focus-within:ring-2 focus-within:ring-indigo-500/40"
+          :class="aiProviderInput === opt.value
+            ? (opt.tone === 'amber' ? 'border-amber-500 bg-amber-50/50' : 'border-indigo-600 bg-indigo-50/50')
             : 'border-slate-200 hover:border-slate-300 bg-white'"
         >
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center space-x-2">
-              <Sparkles class="w-4 h-4 text-indigo-600" />
-              <span class="text-xs font-bold">Otomatis (Hybrid)</span>
-            </div>
-            <input type="radio" value="auto" v-model="aiProviderInput" class="text-indigo-600 focus:ring-indigo-500" />
+          <input type="radio" :value="opt.value" v-model="aiProviderInput" class="sr-only" />
+          <div
+            class="w-10 h-10 sm:w-8 sm:h-8 shrink-0 rounded-xl flex items-center justify-center"
+            :class="opt.tone === 'amber' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'"
+          >
+            <component :is="opt.icon" class="w-5 h-5 sm:w-4 sm:h-4" />
           </div>
-          <p class="text-[11px] text-slate-500 leading-snug">
-            Prioritas Groq untuk kecepatan kilat, otomatis fallback ke Gemini jika terjadi limit.
-          </p>
-          <span class="mt-2 text-[10px] font-semibold text-indigo-600 inline-block">Rekomendasi</span>
-        </label>
-
-        <!-- Option Groq -->
-        <label 
-          class="p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between"
-          :class="aiProviderInput === 'groq' 
-            ? 'border-amber-600 bg-amber-50/40 text-amber-950 shadow-xs' 
-            : 'border-slate-200 hover:border-slate-300 bg-white'"
-        >
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center space-x-2">
-              <Zap class="w-4 h-4 text-amber-600" />
-              <span class="text-xs font-bold">Groq LPU</span>
+          <div class="flex-1 min-w-0 pr-7 sm:pr-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-sm font-bold text-slate-900">{{ opt.title }}</span>
+              <span
+                class="text-[10px] font-bold uppercase tracking-wide"
+                :class="opt.tone === 'amber' ? 'text-amber-600' : 'text-indigo-600'"
+              >{{ opt.tag }}</span>
             </div>
-            <input type="radio" value="groq" v-model="aiProviderInput" class="text-amber-600 focus:ring-amber-500" />
+            <p class="text-xs text-slate-500 leading-snug mt-1">{{ opt.desc }}</p>
           </div>
-          <p class="text-[11px] text-slate-500 leading-snug">
-            Kecepatan ultra tinggi (< 1 detik). Menggunakan Llama 3.2 Vision & Llama 3.3 70B.
-          </p>
-          <span class="mt-2 text-[10px] font-semibold text-amber-600 inline-block">Super Fast</span>
-        </label>
-
-        <!-- Option Gemini -->
-        <label 
-          class="p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between"
-          :class="aiProviderInput === 'gemini' 
-            ? 'border-indigo-600 bg-indigo-50/40 text-indigo-950 shadow-xs' 
-            : 'border-slate-200 hover:border-slate-300 bg-white'"
-        >
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center space-x-2">
-              <Sparkles class="w-4 h-4 text-indigo-600" />
-              <span class="text-xs font-bold">Google Gemini</span>
-            </div>
-            <input type="radio" value="gemini" v-model="aiProviderInput" class="text-indigo-600 focus:ring-indigo-500" />
-          </div>
-          <p class="text-[11px] text-slate-500 leading-snug">
-            Multimodal resmi Google menggunakan Gemini 3.8 Flash & Gemini 2.0 Flash.
-          </p>
-          <span class="mt-2 text-[10px] font-semibold text-indigo-600 inline-block">Standard AI</span>
+          <!-- Radio indicator -->
+          <span
+            class="absolute top-3.5 right-3.5 w-5 h-5 rounded-full border-2 flex items-center justify-center"
+            :class="aiProviderInput === opt.value
+              ? (opt.tone === 'amber' ? 'border-amber-500' : 'border-indigo-600')
+              : 'border-slate-300'"
+          >
+            <span
+              v-if="aiProviderInput === opt.value"
+              class="w-2.5 h-2.5 rounded-full"
+              :class="opt.tone === 'amber' ? 'bg-amber-500' : 'bg-indigo-600'"
+            ></span>
+          </span>
         </label>
       </div>
-    </div>
+    </section>
 
-    <!-- Groq LPU Section -->
-    <div class="clean-card p-6 sm:p-7 space-y-5">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
-            <Zap class="w-4 h-4" />
+    <!-- Groq -->
+    <section id="set-groq" class="clean-card card-pad space-y-5 scroll-mt-32 lg:scroll-mt-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <div class="w-10 h-10 shrink-0 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+            <Zap class="w-5 h-5" />
           </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h2 class="text-sm sm:text-base font-bold text-slate-900">Groq Cloud API Key</h2>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="section-title">Groq Cloud API Key</h2>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
-                Multi-Key & Auto-Rotate
+                Multi-Key
               </span>
             </div>
-            <p class="text-xs text-slate-500">Inference LPU ultra-cepat dengan model Llama 3.2 Vision & Llama 3.3 70B</p>
+            <p class="section-desc">Inference LPU ultra cepat — Llama 3.2 Vision & Llama 3.3 70B.</p>
           </div>
         </div>
-
         <a
           href="https://console.groq.com/keys"
           target="_blank"
-          class="text-xs text-amber-700 hover:text-amber-800 font-semibold flex items-center gap-1 underline underline-offset-4 self-start sm:self-auto"
+          rel="noopener"
+          class="btn-ghost btn-sm text-amber-700 hover:bg-amber-50 self-start sm:self-auto -ml-3 sm:ml-0"
         >
-          <span>Dapatkan Key Gratis di Groq Console</span>
-          <ExternalLink class="w-3.5 h-3.5" />
+          <span>Dapatkan Key Gratis</span>
+          <ExternalLink class="w-4 h-4" />
         </a>
       </div>
 
-      <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <label class="block text-xs font-semibold text-slate-700">
-            Daftar API Key Groq ({{ groqApiKeysInput.filter(k => k.trim()).length }} Key Terdaftar)
-          </label>
-          <span class="text-[11px] text-slate-500 hidden sm:inline">Otomatis rotasi jika limit (429)</span>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between gap-2">
+          <p class="form-label !mb-0">
+            Daftar API Key ({{ groqApiKeysInput.filter(k => k.trim()).length }} terdaftar)
+          </p>
+          <span class="text-[11px] text-slate-500 hidden sm:inline">Rotasi otomatis jika limit (429)</span>
         </div>
 
         <!-- Multi-key input rows -->
-        <div class="space-y-2.5">
-          <div
-            v-for="(keyVal, index) in groqApiKeysInput"
-            :key="index"
-            class="flex items-center gap-2"
-          >
-            <div class="relative flex-1">
-              <div class="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                <Key class="w-4 h-4 text-slate-400" />
-                <span class="text-[10px] font-bold text-slate-400">#{{ index + 1 }}</span>
-              </div>
-              <input
-                v-model="groqApiKeysInput[index]"
-                type="password"
-                :placeholder="index === 0 ? 'gsk_... (Key Utama)' : 'gsk_... (Key Cadangan #' + (index + 1) + ')'"
-                class="w-full pl-16 pr-20 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"
-              />
-              <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <span 
-                  v-if="index === 0" 
-                  class="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded"
-                >
-                  Primary
-                </span>
-                <span 
-                  v-else 
-                  class="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
-                >
-                  Backup
-                </span>
-              </div>
+        <div class="space-y-3">
+          <div v-for="(keyVal, index) in groqApiKeysInput" :key="index">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-bold text-slate-500">Key #{{ index + 1 }}</span>
+              <span
+                v-if="index === 0"
+                class="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded"
+              >Primary</span>
+              <span
+                v-else
+                class="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
+              >Backup</span>
             </div>
-
-            <!-- Remove Button -->
-            <button
-              type="button"
-              @click="removeGroqKeyField(index)"
-              :disabled="groqApiKeysInput.length === 1 && !groqApiKeysInput[0]"
-              class="p-2.5 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 cursor-pointer"
-              title="Hapus Key ini"
-            >
-              <Trash2 class="w-4 h-4" />
-            </button>
+            <div class="flex items-center gap-2">
+              <div class="relative flex-1 min-w-0">
+                <Key class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  v-model="groqApiKeysInput[index]"
+                  type="password"
+                  autocomplete="off"
+                  :placeholder="index === 0 ? 'gsk_... (Key Utama)' : 'gsk_... (Cadangan)'"
+                  class="form-input form-input-mono pl-10"
+                  :aria-label="`Groq API Key #${index + 1}`"
+                />
+              </div>
+              <button
+                type="button"
+                @click="removeGroqKeyField(index)"
+                :disabled="groqApiKeysInput.length === 1 && !groqApiKeysInput[0]"
+                class="btn-icon-danger border border-slate-200"
+                :aria-label="`Hapus key #${index + 1}`"
+                title="Hapus Key ini"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Add New Key Button -->
-        <div class="pt-1">
-          <button
-            type="button"
-            @click="addGroqKeyField"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 text-amber-700 hover:text-amber-800 text-xs font-semibold transition-all cursor-pointer"
-          >
-            <Plus class="w-3.5 h-3.5" />
-            <span>Tambah API Key Groq Lainnya</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          @click="addGroqKeyField"
+          class="btn btn-sm w-full sm:w-auto border border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 text-amber-700"
+        >
+          <Plus class="w-4 h-4" />
+          <span>Tambah API Key Lainnya</span>
+        </button>
 
-        <!-- Test Connection Button & Status for Groq -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-slate-100">
-          <button
-            @click="handleTestGroq()"
-            :disabled="isTestingGroq"
-            class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 transition-colors flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
-          >
-            <Zap class="w-3.5 h-3.5 text-amber-500" />
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-4 border-t border-slate-100">
+          <button @click="handleTestGroq()" :disabled="isTestingGroq" class="btn-secondary w-full sm:w-auto">
+            <Zap class="w-4 h-4 text-amber-500" :class="{ 'animate-pulse': isTestingGroq }" />
             <span>{{ isTestingGroq ? 'Menguji koneksi Groq...' : 'Uji Koneksi Groq' }}</span>
           </button>
-
-          <div v-if="testGroqSuccess !== null" class="text-xs font-semibold flex items-center gap-1.5">
-            <span :class="testGroqSuccess ? 'text-emerald-600' : 'text-rose-600'">
-              {{ testGroqMessage }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Multi-key rotasi explanation box -->
-        <div class="p-3.5 bg-gradient-to-r from-amber-50/80 to-orange-50/80 rounded-xl border border-amber-200/80 text-xs text-slate-700 space-y-1.5">
-          <div class="flex items-center gap-2 font-bold text-amber-900">
-            <Zap class="w-3.5 h-3.5 text-amber-600" />
-            <span>Rotasi Multi-Key Otomatis (Anti Rate Limit)</span>
-          </div>
-          <p class="text-[11px] text-amber-900 leading-relaxed">
-            Anda dapat memasukkan beberapa API Key Groq (bisa dari akun Groq berbeda). Jika satu key mencapai batas kuota / rate limit (HTTP 429), sistem akan <strong>otomatis beralih ke key cadangan berikutnya</strong> tanpa membuat proses lamaran gagal!
+          <p
+            v-if="testGroqSuccess !== null"
+            class="text-[13px] font-semibold px-3 py-2 rounded-xl"
+            :class="testGroqSuccess ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'"
+            role="status"
+          >
+            {{ testGroqMessage }}
           </p>
         </div>
 
-        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-          <p class="font-semibold text-slate-800">Cara Mendapatkan Groq API Key Gratis:</p>
-          <ol class="list-decimal list-inside space-y-1 text-slate-600">
-            <li>Kunjungi <a href="https://console.groq.com/keys" target="_blank" class="text-amber-600 hover:underline font-medium">console.groq.com/keys</a> dan login / daftar akun.</li>
-            <li>Klik tombol <strong>"Create API Key"</strong>.</li>
-            <li>Salin key yang berawalan <code class="bg-slate-200 px-1 py-0.5 rounded text-[11px] font-mono">gsk_...</code> lalu paste pada kolom di atas.</li>
-          </ol>
-        </div>
+        <details class="group rounded-2xl bg-amber-50/60 border border-amber-200/80 text-[13px]">
+          <summary class="list-none cursor-pointer flex items-center justify-between gap-2 px-3.5 min-h-[48px] font-semibold text-amber-900">
+            <span class="flex items-center gap-2">
+              <Zap class="w-4 h-4 text-amber-600 shrink-0" />
+              Rotasi multi-key & cara dapat key
+            </span>
+            <ChevronRight class="w-4 h-4 text-amber-700 transition-transform group-open:rotate-90 shrink-0" />
+          </summary>
+          <div class="px-3.5 pb-3.5 space-y-3 text-xs leading-relaxed text-amber-900">
+            <p>
+              Masukkan beberapa API Key (bisa dari akun berbeda). Jika satu key terkena rate limit (HTTP 429), sistem <strong>otomatis beralih ke key cadangan</strong> tanpa membuat proses gagal.
+            </p>
+            <ol class="list-decimal pl-5 space-y-1 text-slate-700">
+              <li>Kunjungi <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="text-amber-700 underline font-semibold">console.groq.com/keys</a> dan login.</li>
+              <li>Klik <strong>"Create API Key"</strong>.</li>
+              <li>Salin key berawalan <code class="bg-white px-1 py-0.5 rounded text-[11px] font-mono">gsk_...</code> lalu paste di atas.</li>
+            </ol>
+          </div>
+        </details>
       </div>
-    </div>
+    </section>
 
-    <!-- Gemini AI Section -->
-    <div class="clean-card p-6 sm:p-7 space-y-5">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
-            <Sparkles class="w-4 h-4" />
+    <!-- Gemini -->
+    <section id="set-gemini" class="clean-card card-pad space-y-5 scroll-mt-32 lg:scroll-mt-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-start gap-3 min-w-0">
+          <div class="w-10 h-10 shrink-0 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+            <Sparkles class="w-5 h-5" />
           </div>
-          <div>
-            <h2 class="text-sm sm:text-base font-bold text-slate-900">Google Gemini API Key</h2>
-            <p class="text-xs text-slate-500">Model multimodal Gemini 3.8 Flash & 2.0 Flash untuk analisis gambar lowongan</p>
+          <div class="min-w-0">
+            <h2 class="section-title">Google Gemini API Key</h2>
+            <p class="section-desc">Gemini 3.8 Flash & 2.0 Flash untuk analisis gambar lowongan.</p>
           </div>
         </div>
-
         <a
           href="https://aistudio.google.com/app/apikey"
           target="_blank"
-          class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 underline underline-offset-4 self-start sm:self-auto"
+          rel="noopener"
+          class="btn-ghost btn-sm text-indigo-600 hover:bg-indigo-50 self-start sm:self-auto -ml-3 sm:ml-0"
         >
-          <span>Dapatkan Key Gratis di Google AI Studio</span>
-          <ExternalLink class="w-3.5 h-3.5" />
+          <span>Dapatkan Key Gratis</span>
+          <ExternalLink class="w-4 h-4" />
         </a>
       </div>
 
-      <div class="space-y-3">
+      <div class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">API Key Gemini</label>
+          <label class="form-label" for="gm-key">API Key Gemini</label>
           <div class="relative">
+            <Key class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
+              id="gm-key"
               v-model="apiKeyInput"
               type="password"
+              autocomplete="off"
               placeholder="AIzaSy..."
-              class="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              class="form-input form-input-mono pl-10"
             />
-            <Key class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           </div>
         </div>
 
-        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-          <p class="font-semibold text-slate-800">Cara Mendapatkan Gemini API Key Gratis:</p>
-          <ol class="list-decimal list-inside space-y-1 text-slate-600">
-            <li>Buka <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-600 hover:underline font-medium">Google AI Studio</a> dan login dengan akun Google.</li>
-            <li>Klik tombol <strong>"Create API Key"</strong>.</li>
-            <li>Salin kodenya dan paste pada kolom di atas, lalu klik <strong>Simpan Semua Pengaturan</strong>.</li>
+        <details class="group rounded-2xl bg-slate-50 border border-slate-200 text-[13px] text-slate-600">
+          <summary class="list-none cursor-pointer flex items-center justify-between gap-2 px-3.5 min-h-[48px] font-semibold text-slate-800">
+            <span>Cara mendapatkan Gemini API Key</span>
+            <ChevronRight class="w-4 h-4 text-slate-400 transition-transform group-open:rotate-90 shrink-0" />
+          </summary>
+          <ol class="list-decimal pl-9 pr-4 pb-3.5 space-y-1 text-xs leading-relaxed">
+            <li>Buka <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="text-indigo-600 underline font-semibold">Google AI Studio</a> dan login.</li>
+            <li>Klik <strong>"Create API Key"</strong>.</li>
+            <li>Salin & paste di atas, lalu tekan <strong>Simpan Pengaturan</strong>.</li>
           </ol>
-        </div>
+        </details>
       </div>
-    </div>
+    </section>
 
-    <!-- Backup & Restore Data -->
-    <div class="clean-card p-6 sm:p-7 space-y-4">
-      <div class="border-b border-slate-100 pb-3">
-        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-          <Download class="w-4 h-4 text-indigo-600" />
-          <span>Cadangan & Pemulihan Data (JSON Backup)</span>
+    <!-- Backup & Restore -->
+    <section id="set-backup" class="clean-card card-pad space-y-4 scroll-mt-32 lg:scroll-mt-6">
+      <div>
+        <h2 class="section-title">
+          <Download class="w-4 h-4 text-indigo-600 shrink-0" />
+          <span>Cadangan & Pemulihan Data</span>
         </h2>
-        <p class="text-xs text-slate-500 mt-0.5">
-          Ekspor seluruh data CV, portofolio, dan riwayat lamaran ke file JSON offline, atau restore kapan saja.
-        </p>
+        <p class="section-desc">Ekspor data CV, portofolio & riwayat lamaran ke file JSON, atau pulihkan kapan saja.</p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3 pt-1">
-        <button
-          @click="handleExportBackup"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors shadow-xs"
-        >
-          <Download class="w-3.5 h-3.5 text-slate-500" />
+      <div class="grid grid-cols-1 sm:flex sm:flex-wrap gap-2.5">
+        <button @click="handleExportBackup" class="btn-secondary">
+          <Download class="w-4 h-4 text-slate-500" />
           <span>Download Backup JSON</span>
         </button>
-
-        <label class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors shadow-xs cursor-pointer">
-          <Upload class="w-3.5 h-3.5 text-slate-500" />
+        <label class="btn-secondary cursor-pointer">
+          <Upload class="w-4 h-4 text-slate-500" />
           <span>Import / Restore Backup</span>
-          <input type="file" accept=".json" class="hidden" @change="handleImportBackup" />
+          <input type="file" accept=".json,application/json" class="hidden" @change="handleImportBackup" />
         </label>
       </div>
+    </section>
+
+    <!-- Save (desktop) -->
+    <div class="hidden lg:flex justify-end pt-2">
+      <button @click="handleSaveSettings" class="btn-primary px-6">
+        <Check class="w-4 h-4" />
+        <span>Simpan Semua Pengaturan</span>
+      </button>
     </div>
 
-    <!-- Save Action Button -->
-    <div class="flex justify-end pt-2">
-      <button
-        @click="handleSaveSettings"
-        class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-xs transition-all"
-      >
-        Simpan Semua Pengaturan
-      </button>
+    <!-- Save (mobile sticky) -->
+    <div class="mobile-action-bar">
+      <div class="max-w-3xl mx-auto">
+        <button @click="handleSaveSettings" class="btn-primary w-full">
+          <Check class="w-4 h-4" />
+          <span>Simpan Pengaturan</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
