@@ -45,7 +45,29 @@ const testGroqMessage = ref('')
 const testGroqSuccess = ref(null)
 
 const copiedSchema = ref(false)
+const copiedSettingsSql = ref(false)
 const saveSuccess = ref(false)
+const supabaseSyncResult = ref(null)
+
+const settingsSql = `-- Jalankan ini di Supabase > SQL Editor untuk membuat tabel app_settings
+CREATE TABLE IF NOT EXISTS public.app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all" ON public.app_settings;
+CREATE POLICY "Allow all" ON public.app_settings FOR ALL USING (true) WITH CHECK (true);`
+
+function copySettingsSql() {
+  navigator.clipboard.writeText(settingsSql)
+  copiedSettingsSql.value = true
+  setTimeout(() => {
+    copiedSettingsSql.value = false
+  }, 3000)
+}
 
 function addGroqKeyField() {
   groqApiKeysInput.value.push('')
@@ -86,17 +108,20 @@ async function handleSaveSettings() {
   // Sinkronkan API keys ke Supabase (jika Supabase tersambung)
   if (settingsStore.hasSupabase) {
     try {
-      await settingsStore.syncSettingsToSupabase()
+      const syncRes = await settingsStore.syncSettingsToSupabase()
+      supabaseSyncResult.value = syncRes
       await profileStore.fetchFromSupabase()
     } catch (e) {
-      console.warn('Auto fetch/sync on save:', e)
+      supabaseSyncResult.value = { success: false, message: e.message }
     }
+  } else {
+    supabaseSyncResult.value = null
   }
 
   saveSuccess.value = true
   setTimeout(() => {
     saveSuccess.value = false
-  }, 3000)
+  }, 8000)
 }
 
 async function handleTestGroq(targetKey = '') {
@@ -207,9 +232,17 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.portfolios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all" ON public.profiles;
 CREATE POLICY "Allow all" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON public.portfolios;
 CREATE POLICY "Allow all" ON public.portfolios FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON public.applications;
 CREATE POLICY "Allow all" ON public.applications FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON public.app_settings;
 CREATE POLICY "Allow all" ON public.app_settings FOR ALL USING (true) WITH CHECK (true);`
 
   await navigator.clipboard.writeText(schemaText)
@@ -279,9 +312,52 @@ function handleImportBackup(e) {
     </div>
 
     <!-- Save Notification -->
-    <div v-if="saveSuccess" class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
-      <Check class="w-4 h-4 text-emerald-600" />
-      <span class="font-medium">Pengaturan berhasil disimpan dan disinkronkan!</span>
+    <div v-if="saveSuccess" class="space-y-2">
+      <div v-if="supabaseSyncResult?.success" class="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center gap-2.5 shadow-xs">
+        <Check class="w-4 h-4 text-emerald-600 shrink-0" />
+        <div>
+          <span class="font-bold">Pengaturan Berhasil Disimpan!</span>
+          <span class="text-emerald-700 ml-1">Semua API Key telah tersinkron ke tabel <code>app_settings</code> di Supabase. Data Anda aman saat pindah device!</span>
+        </div>
+      </div>
+
+      <div v-else-if="supabaseSyncResult && !supabaseSyncResult.success" class="p-3.5 bg-amber-50 border border-amber-300 text-amber-950 rounded-xl text-xs space-y-2.5 shadow-xs">
+        <div class="flex items-start gap-2.5">
+          <AlertTriangle class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div class="space-y-1.5 flex-1">
+            <p class="font-bold text-amber-900">Pengaturan tersimpan di browser ini, namun GAGAL tersimpan ke Database Supabase!</p>
+            <p class="font-mono text-[11px] bg-amber-100/80 p-2 rounded border border-amber-200 text-amber-950 break-all">
+              Error: {{ supabaseSyncResult.message }}
+            </p>
+            <p class="text-[11px] text-amber-800 leading-relaxed">
+              Jika error menyatakan <em>"relation public.app_settings does not exist"</em>, artinya tabel <code>app_settings</code> belum Anda buat di Supabase. Silakan klik tombol di bawah untuk menyalin perintah SQL, lalu paste dan Run di <strong>Supabase Dashboard > SQL Editor</strong>:
+            </p>
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                @click="copySettingsSql"
+                class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              >
+                <component :is="copiedSettingsSql ? Check : Copy" class="w-3.5 h-3.5" />
+                <span>{{ copiedSettingsSql ? 'SQL app_settings Berhasil Disalin!' : 'Salin SQL Tabel app_settings' }}</span>
+              </button>
+              <a
+                href="https://supabase.com/dashboard"
+                target="_blank"
+                class="px-3 py-1.5 bg-white hover:bg-amber-50 text-amber-800 rounded-lg border border-amber-300 font-semibold text-xs flex items-center gap-1 shadow-xs transition-colors"
+              >
+                <span>Buka Supabase SQL Editor</span>
+                <ExternalLink class="w-3.5 h-3.5 text-amber-600" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
+        <Check class="w-4 h-4 text-emerald-600" />
+        <span class="font-medium">Pengaturan berhasil disimpan di browser lokal ini! (Supabase belum dikonfigurasi)</span>
+      </div>
     </div>
 
     <!-- Supabase Section (Primary) -->
@@ -343,6 +419,25 @@ function handleImportBackup(e) {
               {{ testResultMessage }}
             </span>
           </div>
+        </div>
+
+        <!-- Multi-device Supabase Tips -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1.5">
+          <p class="font-bold text-slate-800 flex items-center gap-1.5">
+            <Sparkles class="w-3.5 h-3.5 text-emerald-600" />
+            <span>Tips: Agar Supabase URL & Anon Key Otomatis Terhubung di Semua Device</span>
+          </p>
+          <p class="text-[11px] leading-relaxed text-slate-600">
+            Supabase URL & Anon Key adalah kredensial utama untuk membuka database. Agar Anda <strong>tidak perlu mengetik ulang</strong> setiap membuka dari HP atau laptop lain:
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-600">
+            <li>Buka <a href="https://vercel.com" target="_blank" class="text-emerald-700 underline font-semibold">Vercel Dashboard</a> > pilih project <strong>joobapp</strong> > <strong>Settings</strong> > <strong>Environment Variables</strong>.</li>
+            <li>Tambahkan 2 variabel:
+              <br/><code class="bg-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">VITE_SUPABASE_URL</code> = URL Supabase Anda
+              <br/><code class="bg-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">VITE_SUPABASE_ANON_KEY</code> = Anon Key Supabase Anda
+            </li>
+            <li>Setelah itu, semua device yang membuka website otomatis langsung tersambung ke database Supabase Anda!</li>
+          </ol>
         </div>
       </div>
     </div>

@@ -142,7 +142,9 @@ export const useSettingsStore = defineStore('settings', {
 
     async syncSettingsToSupabase() {
       const client = getSupabaseClient()
-      if (!client) return false
+      if (!client) {
+        return { success: false, message: 'URL atau Anon Key Supabase belum diisi atau tidak valid.' }
+      }
 
       try {
         const payload = [
@@ -159,12 +161,12 @@ export const useSettingsStore = defineStore('settings', {
 
         if (error) {
           console.warn('Sync settings to Supabase notice:', error.message)
-          return false
+          return { success: false, message: error.message }
         }
-        return true
+        return { success: true, message: 'API Key & konfigurasi berhasil disinkronkan ke tabel app_settings di Supabase!' }
       } catch (err) {
         console.warn('Sync settings exception:', err)
-        return false
+        return { success: false, message: err.message || 'Gagal menyimpan ke database Supabase.' }
       }
     },
 

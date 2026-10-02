@@ -234,6 +234,7 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
 );
 
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all" ON public.app_settings;
 CREATE POLICY "Allow all" ON public.app_settings FOR ALL USING (true) WITH CHECK (true);
 
 -- Masukkan Groq API Key Anda sendiri di sini (opsional)
