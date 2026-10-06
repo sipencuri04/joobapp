@@ -13,9 +13,10 @@ import {
   RotateCcw,
   Sparkles,
   Layers,
-  Save
+  Save,
+  Printer
 } from 'lucide-vue-next'
-import { exportElementToPdf } from '../services/pdfExport'
+import { exportCvToTextPdf, printDocument, exportElementToPdf } from '../services/pdfExport'
 import { useProfileStore } from '../stores/profile'
 import { usePaperScale } from '../composables/usePaperScale'
 
@@ -222,12 +223,24 @@ async function handleDownloadPdf() {
     isExporting.value = true
     await nextTick()
     const filename = `CV_${(cvData.value.fullName || 'Pelamar').replace(/\s+/g, '_')}.pdf`
-    await exportElementToPdf('cv-document-paper', filename)
+    // Ekspor PDF Berbasis Teks Asli (Vector / Pure Text ATS-Friendly)
+    exportCvToTextPdf(cvData.value, filename)
   } catch (err) {
-    alert('Gagal mendownload PDF CV: ' + err.message)
+    console.warn('Gagal dengan text PDF, mencoba fallback canvas:', err)
+    try {
+      const filename = `CV_${(cvData.value.fullName || 'Pelamar').replace(/\s+/g, '_')}.pdf`
+      await exportElementToPdf('cv-document-paper', filename)
+    } catch (fallbackErr) {
+      alert('Gagal mendownload PDF CV: ' + fallbackErr.message)
+    }
   } finally {
     isExporting.value = false
   }
+}
+
+function handlePrint() {
+  const title = `CV - ${cvData.value.fullName || 'Pelamar'}`
+  printDocument('cv-document-paper', title)
 }
 </script>
 
@@ -267,14 +280,25 @@ async function handleDownloadPdf() {
           <span class="hidden xl:inline">Reset</span>
         </button>
 
-        <!-- Export PDF Button -->
+        <!-- Print / Cetak via Browser (Save as PDF) -->
+        <button
+          @click="handlePrint"
+          class="btn-secondary btn-sm px-2.5"
+          title="Cetak atau Simpan sebagai PDF via dialog cetak browser (100% Vector Text)"
+        >
+          <Printer class="w-4 h-4 text-slate-600" />
+          <span class="hidden sm:inline">Cetak</span>
+        </button>
+
+        <!-- Export PDF Button (ATS Text Direct Download) -->
         <button
           @click="handleDownloadPdf"
           :disabled="isExporting"
           class="btn-dark btn-sm flex-1 md:flex-none xl:flex-1 2xl:flex-none"
+          title="Download langsung file PDF berbasis teks vektor asli (Lolos ATS)"
         >
           <Download class="w-4 h-4" />
-          <span>{{ isExporting ? 'Membuat...' : 'PDF' }}<span class="hidden sm:inline">{{ isExporting ? '' : ' CV' }}</span></span>
+          <span>{{ isExporting ? 'Membuat...' : 'Download PDF' }}</span>
         </button>
       </div>
     </div>

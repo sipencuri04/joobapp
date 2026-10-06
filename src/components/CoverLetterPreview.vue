@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { Copy, Check, Download, Edit3, Eye, RotateCcw, Save, Sparkles } from 'lucide-vue-next'
-import { exportElementToPdf } from '../services/pdfExport'
+import { Copy, Check, Download, Edit3, Eye, RotateCcw, Save, Sparkles, Printer } from 'lucide-vue-next'
+import { exportCoverLetterToTextPdf, printDocument, exportElementToPdf } from '../services/pdfExport'
 import { useProfileStore } from '../stores/profile'
 import { usePaperScale } from '../composables/usePaperScale'
 import { 
@@ -267,12 +267,26 @@ async function handleDownloadPdf() {
     const cleanCompany = (letterData.value.company || 'Perusahaan').replace(/\s+/g, '_')
     const cleanName = (letterData.value.applicantName || 'Pelamar').replace(/\s+/g, '_')
     const filename = `Surat_Lamaran_${cleanName}_${cleanCompany}.pdf`
-    await exportElementToPdf('cover-letter-paper', filename)
+    // Ekspor PDF Berbasis Teks Asli (Vector / Pure Text ATS-Friendly)
+    exportCoverLetterToTextPdf(letterData.value, filename)
   } catch (err) {
-    alert('Gagal mendownload PDF Surat Lamaran: ' + err.message)
+    console.warn('Gagal dengan text PDF, mencoba fallback canvas:', err)
+    try {
+      const cleanCompany = (letterData.value.company || 'Perusahaan').replace(/\s+/g, '_')
+      const cleanName = (letterData.value.applicantName || 'Pelamar').replace(/\s+/g, '_')
+      const filename = `Surat_Lamaran_${cleanName}_${cleanCompany}.pdf`
+      await exportElementToPdf('cover-letter-paper', filename)
+    } catch (fallbackErr) {
+      alert('Gagal mendownload PDF Surat Lamaran: ' + fallbackErr.message)
+    }
   } finally {
     isExporting.value = false
   }
+}
+
+function handlePrint() {
+  const title = `Surat Lamaran - ${letterData.value.applicantName || 'Pelamar'}`
+  printDocument('cover-letter-paper', title)
 }
 </script>
 
@@ -342,14 +356,25 @@ async function handleDownloadPdf() {
           <span class="hidden xl:inline">Reset</span>
         </button>
 
-        <!-- Export PDF Button -->
+        <!-- Print / Cetak via Browser -->
+        <button
+          @click="handlePrint"
+          class="btn-secondary btn-sm px-2.5"
+          title="Cetak atau Simpan sebagai PDF via dialog cetak browser (100% Vector Text)"
+        >
+          <Printer class="w-4 h-4 text-slate-600" />
+          <span class="hidden sm:inline">Cetak</span>
+        </button>
+
+        <!-- Export PDF Button (ATS Direct Download) -->
         <button
           @click="handleDownloadPdf"
           :disabled="isExporting"
           class="btn-dark btn-sm flex-1 md:flex-none xl:flex-1 2xl:flex-none"
+          title="Download langsung file PDF berbasis teks vektor asli (Lolos ATS)"
         >
           <Download class="w-4 h-4" />
-          <span>{{ isExporting ? 'Membuat...' : 'PDF' }}<span class="hidden sm:inline">{{ isExporting ? '' : ' Surat' }}</span></span>
+          <span>{{ isExporting ? 'Membuat...' : 'Download PDF' }}</span>
         </button>
       </div>
     </div>
