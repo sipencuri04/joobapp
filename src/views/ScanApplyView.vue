@@ -15,7 +15,8 @@ import {
   sortPositionsByRelevance,
   isPositionItRelated,
   getBestPositionForItGraduate,
-  cleanLocationCity
+  cleanLocationCity,
+  formatDegreeMajor
 } from '../services/coverLetterGenerator'
 
 import CoverLetterPreview from '../components/CoverLetterPreview.vue'
@@ -232,7 +233,7 @@ async function triggerAutoTailor() {
         companyCity,
         applicantName: profileStore.profile.fullName,
         birthPlaceDate: profileStore.profile.birthPlaceDate || 'Magelang, 21 April 2001',
-        education: (profileStore.educations?.[0]?.degree ? `${profileStore.educations[0].degree} ${profileStore.educations[0].major || ''}`.trim() : null) || profileStore.profile.headline || 'S1 Teknik Informatika',
+        education: formatDegreeMajor(profileStore.educations?.[0]?.degree, profileStore.educations?.[0]?.major) || 'S1 Teknik Informatika',
         domicile: city,
         phone: profileStore.profile.phone,
         email: profileStore.profile.email,

@@ -170,6 +170,19 @@ export function cleanLocationCity(location = '', companyName = '') {
 }
 
 /**
+ * Format gelar dan jurusan agar rapi dan tidak duplikat (misal 'S1 Teknik Informatika Teknik Informatika')
+ */
+export function formatDegreeMajor(degree = '', major = '') {
+  const d = (degree || '').trim()
+  const m = (major || '').trim()
+  if (!d && !m) return 'S1 Teknik Informatika'
+  if (!m) return d
+  if (!d) return m
+  if (d.toLowerCase().includes(m.toLowerCase())) return d
+  return `${d} ${m}`
+}
+
+/**
  * Buat Paragraf 1 (Inti Kualifikasi & Pengalaman) yang otomatis menyesuaikan bidang loker
  */
 export function generateTailoredParagraph1(jobInfo = {}, applicantProfile = {}) {
@@ -180,7 +193,7 @@ export function generateTailoredParagraph1(jobInfo = {}, applicantProfile = {}) 
   
   const category = detectJobCategory(jobTitle, requirements, summary)
   
-  // Ambil pendidikan terbaik dari profile (prioritas S1 / Teknik Informatika)
+  // Ambil pendidikan terbaik dari profile (prioritas S1 / Teknik Informatika tanpa duplikasi)
   let education = 'S1 Teknik Informatika'
   if (Array.isArray(applicantProfile.educations) && applicantProfile.educations.length > 0) {
     const s1Edu = applicantProfile.educations.find(e => 
@@ -188,9 +201,9 @@ export function generateTailoredParagraph1(jobInfo = {}, applicantProfile = {}) 
       (e.major && /informatika/i.test(e.major))
     )
     if (s1Edu) {
-      education = `${s1Edu.degree || 'S1'} ${s1Edu.major || 'Teknik Informatika'}`.trim()
+      education = formatDegreeMajor(s1Edu.degree, s1Edu.major)
     } else {
-      education = `${applicantProfile.educations[0].degree || ''} ${applicantProfile.educations[0].major || ''}`.trim() || 'S1 Teknik Informatika'
+      education = formatDegreeMajor(applicantProfile.educations[0].degree, applicantProfile.educations[0].major) || 'S1 Teknik Informatika'
     }
   } else if (applicantProfile.headline && !/mahasiswa/i.test(applicantProfile.headline)) {
     education = applicantProfile.headline

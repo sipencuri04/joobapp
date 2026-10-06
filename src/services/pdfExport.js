@@ -71,13 +71,11 @@ export function exportCvToTextPdf(cvData = {}, filename = 'CV_Pelamar.pdf') {
     doc.setFont('times', 'normal')
     doc.setFontSize(9.5)
     doc.setTextColor(20, 20, 20)
-    const bioLines = doc.splitTextToSize(cvData.aboutMe.trim(), contentWidth)
-    for (const bLine of bioLines) {
-      checkPageBreak(5)
-      doc.text(bLine, margin, y)
-      y += 4.3
-    }
-    y += 2.5
+    const bioText = cvData.aboutMe.trim()
+    const bioLines = doc.splitTextToSize(bioText, contentWidth)
+    checkPageBreak((bioLines.length * 4.6) + 3)
+    doc.text(bioText, margin, y, { align: 'justify', maxWidth: contentWidth, lineHeightFactor: 1.38 })
+    y += (bioLines.length * 4.6) + 3
   }
 
   // ── 2. PENDIDIKAN ────────────────────────────────────────────────────
@@ -126,14 +124,13 @@ export function exportCvToTextPdf(cvData = {}, filename = 'CV_Pelamar.pdf') {
         doc.setFont('times', 'normal')
         doc.setFontSize(9.5)
         doc.setTextColor(20, 20, 20)
-        const descLines = doc.splitTextToSize(proj.description.trim(), contentWidth - 4)
-        for (const dLine of descLines) {
-          checkPageBreak(5)
-          doc.text(dLine, margin + 4, y)
-          y += 4.3
-        }
+        const descText = proj.description.trim()
+        const descLines = doc.splitTextToSize(descText, contentWidth - 4)
+        checkPageBreak((descLines.length * 4.6) + 3)
+        doc.text(descText, margin + 4, y, { align: 'justify', maxWidth: contentWidth - 4, lineHeightFactor: 1.38 })
+        y += (descLines.length * 4.6) + 3
       }
-      y += 2.5
+      y += 2
     }
   }
 
@@ -254,32 +251,35 @@ export function exportCoverLetterToTextPdf(letterData = {}, filename = 'Surat_La
 
   y += 4
 
-  // 7. Paragraf 1 (Kualifikasi & Pengalaman)
+  // 7. Paragraf 1 (Kualifikasi & Pengalaman) — Rata Kanan Kiri (Justify)
   if (letterData.bodyParagraph1) {
-    const p1Lines = doc.splitTextToSize(`      ${letterData.bodyParagraph1.trim()}`, contentWidth)
-    for (const line of p1Lines) {
-      checkPageBreak(5.5)
-      doc.text(line, margin, y)
-      y += 5.2
-    }
-    y += 3.5
+    const p1Text = `        ${letterData.bodyParagraph1.trim()}`
+    const p1Lines = doc.splitTextToSize(p1Text, contentWidth)
+    checkPageBreak((p1Lines.length * 5.6) + 4)
+    doc.text(p1Text, margin, y, { align: 'justify', maxWidth: contentWidth, lineHeightFactor: 1.42 })
+    y += (p1Lines.length * 5.6) + 4
   }
 
-  // 8. Paragraf 2 (Lampiran & Penutup)
+  // 8. Paragraf 2 (Lampiran & Penutup) — Rata Kanan Kiri (Justify)
   if (letterData.bodyParagraph2) {
-    const p2Lines = doc.splitTextToSize(`      ${letterData.bodyParagraph2.trim()}`, contentWidth)
-    for (const line of p2Lines) {
-      checkPageBreak(5.5)
-      doc.text(line, margin, y)
-      y += 5.2
-    }
-    y += 8
+    const p2Text = `        ${letterData.bodyParagraph2.trim()}`
+    const p2Lines = doc.splitTextToSize(p2Text, contentWidth)
+    checkPageBreak((p2Lines.length * 5.6) + 4)
+    doc.text(p2Text, margin, y, { align: 'justify', maxWidth: contentWidth, lineHeightFactor: 1.42 })
+    y += (p2Lines.length * 5.6) + 6
   }
 
-  // 9. Tanda Tangan
-  checkPageBreak(30)
+  // 9. Tanda Tangan (Diposisikan agak ke bawah secara proporsional mendekati footer)
+  const targetTtdY = Math.max(y + 16, pageHeight - margin - 38)
+  if (targetTtdY + 30 > pageHeight - margin) {
+    doc.addPage()
+    y = margin + 10
+  } else {
+    y = targetTtdY
+  }
+
   doc.text('Hormat saya,', margin, y)
-  y += 22
+  y += 24
   doc.text(letterData.applicantName || 'Pelamar', margin, y)
 
   doc.save(filename)

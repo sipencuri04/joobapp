@@ -10,7 +10,8 @@ import {
   generateTailoredParagraph2, 
   formatFullCoverLetterText, 
   formatIndonesianDate,
-  cleanLocationCity
+  cleanLocationCity,
+  formatDegreeMajor
 } from '../services/coverLetterGenerator'
 
 const props = defineProps({
@@ -130,8 +131,8 @@ function applyAutoTailoring(force = false) {
     (e.major && /informatika/i.test(e.major))
   )
   const bestEdu = s1Edu 
-    ? `${s1Edu.degree || 'S1'} ${s1Edu.major || 'Teknik Informatika'}`.trim()
-    : (educations[0]?.degree ? `${educations[0].degree} ${educations[0].major || ''}`.trim() : 'S1 Teknik Informatika')
+    ? formatDegreeMajor(s1Edu.degree, s1Edu.major)
+    : (educations[0] ? formatDegreeMajor(educations[0].degree, educations[0].major) : 'S1 Teknik Informatika')
 
   letterData.value.cityDate = `${city}, ${todayIndo.value}`
   letterData.value.position = props.positionTitle || 'Posisi Terkait'
@@ -575,9 +576,9 @@ function handlePrint() {
           </p>
         </div>
 
-        <!-- 9. Tanda Tangan & Nama Terang (Kiri Bawah) -->
-        <div class="mt-10 text-[12pt]">
-          <div class="mb-20">Hormat saya,</div>
+        <!-- 9. Tanda Tangan & Nama Terang (Kiri Bawah - Agak ke Bawah) -->
+        <div class="mt-16 sm:mt-24 text-[12pt]">
+          <div class="mb-24">Hormat saya,</div>
           <div class="font-normal">{{ letterData.applicantName }}</div>
         </div>
 
