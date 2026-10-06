@@ -4,7 +4,8 @@ import {
   generateTailoredParagraph2, 
   formatFullCoverLetterText, 
   formatIndonesianDate,
-  detectJobCategory 
+  detectJobCategory,
+  generateNaturalWhatsAppMessage 
 } from './coverLetterGenerator'
 
 let cachedWorkingModel = null
@@ -349,7 +350,13 @@ Instruksi Khusus:
 2. Buat "coverLetterParagraph2": Paragraf penutup formal dan kesiapan melampirkan berkas CV serta portofolio.
 3. Buat "tailoredCoverLetter": Teks lengkap surat lamaran formal standar Indonesia (Tanggal, Perihal, Alamat HRD, Salam Pembuka, Data Diri Pelamar, Paragraf Isi yang disesuaikan dengan bidang loker, Penutup, dan Tanda Tangan). Sertakan tanggal hari ini, kepada Yth. HRD / Tim Rekrutmen ${jobData.companyName || 'Perusahaan'}.
 4. Buat "tailoredEmailSubject": subjek email resmi standar HR (Contoh: "Lamaran Pekerjaan - ${jobData.jobTitle || 'Posisi'} - ${userProfile.fullName || 'Pelamar'}").
-5. Buat "tailoredWhatsAppMessage": pesan pengantar profesional untuk dikirim via WhatsApp. Cantumkan salam sopan, perkenalan diri, posisi yang dilamar, ringkasan 2-3 proyek portofolio pelamar yang paling relevan (judul proyek dan teknologi yang digunakan), tautan portfolio/GitHub jika ada, serta kalimat bahwa pelamar melampirkan dokumen PDF CV ATS.
+5. Buat "tailoredWhatsAppMessage": pesan pengantar WhatsApp yang SANGAT NATURAL, RINGKAS, RAMAH, DAN TIDAK KAKU/ROBOTIC. Format persis seperti contoh percakapan nyata berikut:
+"Selamat pagi Bapak/Ibu HRD ${jobData.companyName || 'Perusahaan'}. Perkenalkan, saya ${userProfile.fullName || 'Nama'}, memiliki latar belakang di bidang [bidang/pendidikan pelamar].
+
+Saya tertarik melamar posisi ${jobData.jobTitle || 'Posisi'}. Saya memiliki pengalaman dalam [sebutkan 3-4 keahlian/pengalaman relevan pelamar yang paling cocok dengan posisi ini].
+
+CV saya lampirkan sebagai bahan pertimbangan. Terima kasih atas waktu dan kesempatannya, Bapak/Ibu. 🙏"
+(Format: 3 paragraf pendek, natural, to the point, jangan kaku atau berbelit-belit).
 6. Buat "recommendedSkills": (array nama skill pelamar yang paling cocok dan harus di-highlight).
 7. Buat "tailoredProfessionalSummary": (1 paragraf ringkasan CV yang disesuaikan dengan posisi ini).
 8. Tentukan "recommendedPortfolioTitles": (array judul portofolio milik pelamar yang paling relevan dengan posisi ini).
@@ -360,7 +367,7 @@ Kembalikan HANYA format JSON valid tanpa format markdown lain:
   "coverLetterParagraph2": "Sebagai bahan pertimbangan Bapak/Ibu, saya siap melampirkan...",
   "tailoredCoverLetter": "Teks lengkap surat lamaran formal dalam bahasa Indonesia...",
   "tailoredEmailSubject": "Lamaran Pekerjaan - [Posisi] - [Nama]",
-  "tailoredWhatsAppMessage": "Selamat pagi/siang Tim HRD [Perusahaan], perkenalkan saya [Nama]...",
+  "tailoredWhatsAppMessage": "Selamat pagi Bapak/Ibu HRD [Perusahaan]. Perkenalkan, saya [Nama], memiliki latar belakang di bidang [Bidang]...\n\nSaya tertarik melamar posisi [Posisi]...\n\nCV saya lampirkan sebagai bahan pertimbangan. Terima kasih atas waktu dan kesempatannya, Bapak/Ibu. 🙏",
   "tailoredProfessionalSummary": "Ringkasan profesional CV yang disesuaikan...",
   "recommendedSkills": ["Skill 1", "Skill 2"],
   "recommendedPortfolioTitles": ["Judul Proyek 1", "Judul Proyek 2"]
@@ -404,7 +411,7 @@ function generateFallbackTailoredDocs({ jobData, userProfile, masterCoverLetter,
   })
 
   const subject = `Lamaran Pekerjaan: ${position} - ${name}`
-  const wa = `Halo HRD / Rekruter ${company},\n\nPerkenalkan saya ${name}. Saya bermaksud melamar lowongan ${position} yang sedang dibuka.\n\nBersama pesan ini saya melampirkan berkas Curriculum Vitae (CV) dan tautan portofolio proyek saya. Terima kasih atas perhatian dan kesempatannya.`
+  const wa = generateNaturalWhatsAppMessage(jobData, userProfile)
 
   return {
     tailoredCoverLetter: fullLetter,

@@ -212,3 +212,57 @@ Hormat saya,
 
 ${letterData.applicantName || ''}`
 }
+
+/**
+ * Buat pesan WhatsApp lamaran kerja yang santun, ringkas, dan sangat natural (human-like)
+ */
+export function generateNaturalWhatsAppMessage(jobInfo = {}, applicantProfile = {}) {
+  const company = jobInfo.companyName ? ` ${jobInfo.companyName}` : ''
+  const position = jobInfo.jobTitle || 'posisi yang dibuka'
+  const name = applicantProfile.fullName || 'Agung Setyawan'
+
+  const category = detectJobCategory(position, jobInfo.requirements || [], jobInfo.summary || '')
+
+  let background = 'di bidang IT dan Teknik Informatika'
+  if (applicantProfile.headline && applicantProfile.headline.trim()) {
+    const hl = applicantProfile.headline.replace(/^mahasiswa (akhir )?/i, '').trim()
+    if (hl) background = `di bidang ${hl}`
+  }
+
+  let experience = 'pengembangan sistem, jaringan komputer, maintenance, serta troubleshooting perangkat'
+  switch (category.key) {
+    case 'it_infra':
+      experience = 'pengembangan sistem, jaringan komputer, maintenance, serta troubleshooting perangkat'
+      break
+    case 'it_dev':
+      experience = 'pengembangan sistem web, pengelolaan database, integrasi API, serta implementasi aplikasi'
+      break
+    case 'data_ai':
+      experience = 'pengolahan data menggunakan Python, analisis data, integrasi API, serta otomatisasi sistem'
+      break
+    case 'admin':
+      experience = 'administrasi perkantoran, pengolahan data dokumen, pengarsipan, serta pengoperasian sistem komputer'
+      break
+    case 'creative':
+      experience = 'desain grafis, pembuatan konten visual, multimedia, serta penerjemahan konsep kreatif'
+      break
+    case 'marketing':
+      experience = 'komunikasi pemasaran, pengelolaan media sosial, pembuatan konten promosi, serta strategi penjualan'
+      break
+    case 'finance':
+      experience = 'administrasi keuangan, pencatatan transaksi, pengolahan data numerik, dan penyusunan rekapitulasi data'
+      break
+    case 'service':
+      experience = 'pelayanan pelanggan, komunikasi ramah, penanganan kebutuhan konsumen, dan operasional layanan'
+      break
+    default:
+      experience = 'administrasi, kerja sama tim, adaptasi cepat, serta penyelesaian tugas secara terstruktur dan disiplin'
+      break
+  }
+
+  return `Selamat pagi Bapak/Ibu HRD${company}. Perkenalkan, saya ${name}, memiliki latar belakang ${background}.
+
+Saya tertarik melamar posisi ${position}. Saya memiliki pengalaman dalam ${experience}.
+
+CV saya lampirkan sebagai bahan pertimbangan. Terima kasih atas waktu dan kesempatannya, Bapak/Ibu. 🙏`
+}

@@ -6,7 +6,13 @@ import { useApplicationStore } from '../stores/applications'
 import { useSettingsStore } from '../stores/settings'
 import { executeJobScan, executeTailorDocuments } from '../services/aiManager'
 import { getMockJobData, cleanIndonesianPhoneNumber } from '../services/gemini'
-import { generateTailoredParagraph1, generateTailoredParagraph2, formatFullCoverLetterText, formatIndonesianDate } from '../services/coverLetterGenerator'
+import { 
+  generateTailoredParagraph1, 
+  generateTailoredParagraph2, 
+  formatFullCoverLetterText, 
+  formatIndonesianDate,
+  generateNaturalWhatsAppMessage 
+} from '../services/coverLetterGenerator'
 
 import CoverLetterPreview from '../components/CoverLetterPreview.vue'
 import CvPreview from '../components/CvPreview.vue'
@@ -225,7 +231,7 @@ async function triggerAutoTailor() {
         coverLetterParagraph2: paragraph2,
         emailSubject: `Lamaran Pekerjaan: ${current.value.jobTitle} - ${profileStore.profile.fullName}`,
         professionalSummary: profileStore.profile.bio,
-        whatsAppMessage: `Halo HRD / Tim Rekrutmen ${current.value.companyName},\n\nPerkenalkan saya ${profileStore.profile.fullName}. Saya bermaksud melamar posisi ${current.value.jobTitle} di ${current.value.companyName}.\n\nBersama pesan ini saya melampirkan berkas Curriculum Vitae (CV) ATS dan berkas pendukung saya. Terima kasih atas perhatian dan kesempatannya.`,
+        whatsAppMessage: generateNaturalWhatsAppMessage(jobInfo, applicantProfileForGen),
         recommendedPortfolioIds: profileStore.portfolios.slice(0, 3).map(p => p.id)
       }
     }
@@ -236,6 +242,24 @@ async function triggerAutoTailor() {
   } finally {
     appStore.setTailoring(false)
   }
+}
+
+function resetWhatsAppTemplate() {
+  const jobInfo = {
+    companyName: current.value.companyName,
+    jobTitle: current.value.jobTitle,
+    location: current.value.location,
+    requirements: current.value.requirements || [],
+    skillsRequired: current.value.skillsRequired || [],
+    summary: current.value.summary || ''
+  }
+  const applicantProfile = {
+    ...profileStore.profile,
+    educations: profileStore.educations,
+    experiences: profileStore.experiences,
+    skills: profileStore.skills
+  }
+  current.value.tailoredWhatsAppMessage = generateNaturalWhatsAppMessage(jobInfo, applicantProfile)
 }
 
 // Direct Actions: Gmail
@@ -628,10 +652,20 @@ function loadDemoSample() {
               <MessageSquare class="w-4 h-4 text-emerald-600 shrink-0" />
               <h3 class="font-bold text-sm text-slate-900 truncate">Draft Pesan WhatsApp</h3>
             </div>
-            <button @click="copyWhatsAppMessage" class="btn-secondary btn-sm shrink-0">
-              <component :is="copiedWa ? Check : Copy" class="w-4 h-4" :class="copiedWa ? 'text-emerald-600' : 'text-slate-500'" />
-              <span>{{ copiedWa ? 'Tersalin!' : 'Salin' }}</span>
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                @click="resetWhatsAppTemplate"
+                class="btn-secondary btn-sm text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                title="Format ulang pesan WA otomatis dengan gaya bahasa natural & ramah"
+              >
+                <Sparkles class="w-4 h-4 text-emerald-600" />
+                <span class="hidden sm:inline">Format Ulang</span>
+              </button>
+              <button @click="copyWhatsAppMessage" class="btn-secondary btn-sm shrink-0">
+                <component :is="copiedWa ? Check : Copy" class="w-4 h-4" :class="copiedWa ? 'text-emerald-600' : 'text-slate-500'" />
+                <span>{{ copiedWa ? 'Tersalin!' : 'Salin' }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- Panduan -->
