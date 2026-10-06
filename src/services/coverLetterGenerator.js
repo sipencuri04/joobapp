@@ -115,12 +115,21 @@ export function generateTailoredParagraph1(jobInfo = {}, applicantProfile = {}) 
   
   const category = detectJobCategory(jobTitle, requirements, summary)
   
-  // Ambil pendidikan terbaik dari profile
-  const education = (
-    applicantProfile.educations?.[0]?.degree 
-      ? `${applicantProfile.educations[0].degree} ${applicantProfile.educations[0].major || ''}`.trim()
-      : null
-  ) || applicantProfile.education || applicantProfile.headline || 'S1 Teknik Informatika'
+  // Ambil pendidikan terbaik dari profile (prioritas S1 / Teknik Informatika)
+  let education = 'S1 Teknik Informatika'
+  if (Array.isArray(applicantProfile.educations) && applicantProfile.educations.length > 0) {
+    const s1Edu = applicantProfile.educations.find(e => 
+      (e.degree && /s1|sarjana/i.test(e.degree)) || 
+      (e.major && /informatika/i.test(e.major))
+    )
+    if (s1Edu) {
+      education = `${s1Edu.degree || 'S1'} ${s1Edu.major || 'Teknik Informatika'}`.trim()
+    } else {
+      education = `${applicantProfile.educations[0].degree || ''} ${applicantProfile.educations[0].major || ''}`.trim() || 'S1 Teknik Informatika'
+    }
+  } else if (applicantProfile.headline && !/mahasiswa/i.test(applicantProfile.headline)) {
+    education = applicantProfile.headline
+  }
 
   let paragraph = ''
 
@@ -223,10 +232,16 @@ export function generateNaturalWhatsAppMessage(jobInfo = {}, applicantProfile = 
 
   const category = detectJobCategory(position, jobInfo.requirements || [], jobInfo.summary || '')
 
-  let background = 'di bidang IT dan Teknik Informatika'
+  let intro = 'lulusan S1 Teknik Informatika'
   if (applicantProfile.headline && applicantProfile.headline.trim()) {
-    const hl = applicantProfile.headline.replace(/^mahasiswa (akhir )?/i, '').trim()
-    if (hl) background = `di bidang ${hl}`
+    const hl = applicantProfile.headline
+      .replace(/^mahasiswa (akhir )?/i, '')
+      .trim()
+    if (/lulusan/i.test(hl)) {
+      intro = hl.split('|')[0].trim()
+    } else {
+      intro = `lulusan S1 Teknik Informatika`
+    }
   }
 
   let experience = 'pengembangan sistem, jaringan komputer, maintenance, serta troubleshooting perangkat'
@@ -260,7 +275,7 @@ export function generateNaturalWhatsAppMessage(jobInfo = {}, applicantProfile = 
       break
   }
 
-  return `Selamat pagi Bapak/Ibu HRD${company}. Perkenalkan, saya ${name}, memiliki latar belakang ${background}.
+  return `Selamat pagi Bapak/Ibu HRD${company}. Perkenalkan, saya ${name}, ${intro}.
 
 Saya tertarik melamar posisi ${position}. Saya memiliki pengalaman dalam ${experience}.
 

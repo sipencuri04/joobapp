@@ -134,9 +134,13 @@ function applyAutoTailoring(force = false) {
     portfolios: profileStore.portfolios || []
   }
 
-  const bestEdu = (educations[0]?.degree ? `${educations[0].degree} ${educations[0].major || ''}`.trim() : null) 
-    || profile.headline 
-    || 'S1 Teknik Informatika'
+  const s1Edu = educations.find(e => 
+    (e.degree && /s1|sarjana/i.test(e.degree)) || 
+    (e.major && /informatika/i.test(e.major))
+  )
+  const bestEdu = s1Edu 
+    ? `${s1Edu.degree || 'S1'} ${s1Edu.major || 'Teknik Informatika'}`.trim()
+    : (educations[0]?.degree ? `${educations[0].degree} ${educations[0].major || ''}`.trim() : 'S1 Teknik Informatika')
 
   letterData.value.cityDate = `${city}, ${todayIndo.value}`
   letterData.value.position = props.positionTitle || 'Posisi Terkait'

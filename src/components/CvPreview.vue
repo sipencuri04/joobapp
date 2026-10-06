@@ -69,11 +69,11 @@ const cvData = ref({
   phone: props.profile.phone || '+62 821-3549-0941',
   email: props.profile.email || 'aggungset04@gmail.com',
   location: props.profile.location || 'Kleteran , Grabag , Magelang',
-  aboutMe: props.tailoredSummary || props.profile.bio || 'Saya Agung Setyawan, mahasiswa akhir Teknik Informatika dengan ketertarikan kuat pada tiga bidang utama, yaitu pengembangan web, jaringan komputer, dan pengolahan data menggunakan Python. Selain itu, saya juga memiliki kemampuan dalam maintenance PC serta perangkat IT lainnya.',
+  aboutMe: props.tailoredSummary || props.profile.bio || 'Saya Agung Setyawan, lulusan S1 Teknik Informatika dengan ketertarikan kuat pada tiga bidang utama, yaitu pengembangan web, jaringan komputer, dan pengolahan data menggunakan Python. Selain itu, saya juga memiliki kemampuan dalam maintenance PC serta perangkat IT lainnya.',
   
   // Pendidikan
-  educationHeader: '2019 - 2022 | SMAN 1 Grabag| Jurusan Ilmu Pengetahuan Sosial',
-  educationDesc: 'Jurusan IPS membekali siswa dengan dasar sosial, ekonomi, dan manajemen, serta mengembangkan kemampuan analisis, logika berpikir, dan komunikasi yang mendukung karier di bidang teknologi informasi.',
+  educationHeader: '2020 - 2024 | S1 Teknik Informatika',
+  educationDesc: 'Fokus studi pada rekayasa perangkat lunak, pengembangan sistem web, arsitektur jaringan komputer, basis data, serta pemecahan masalah komputasi dan implementasi teknologi informasi.',
   
   // Projects list
   projects: [
@@ -163,9 +163,9 @@ function resetToImageSample() {
     phone: '+62 821-3549-0941',
     email: 'aggungset04@gmail.com',
     location: 'Kleteran , Grabag , Magelang',
-    aboutMe: 'Saya Agung Setyawan, mahasiswa akhir Teknik Informatika dengan ketertarikan kuat pada tiga bidang utama, yaitu pengembangan web, jaringan komputer, dan pengolahan data menggunakan Python. Selain itu, saya juga memiliki kemampuan dalam maintenance PC serta perangkat IT lainnya.',
-    educationHeader: '2019 - 2022 | SMAN 1 Grabag| Jurusan Ilmu Pengetahuan Sosial',
-    educationDesc: 'Jurusan IPS membekali siswa dengan dasar sosial, ekonomi, dan manajemen, serta mengembangkan kemampuan analisis, logika berpikir, dan komunikasi yang mendukung karier di bidang teknologi informasi.',
+    aboutMe: 'Saya Agung Setyawan, lulusan S1 Teknik Informatika dengan ketertarikan kuat pada tiga bidang utama, yaitu pengembangan web, jaringan komputer, dan pengolahan data menggunakan Python. Selain itu, saya juga memiliki kemampuan dalam maintenance PC serta perangkat IT lainnya.',
+    educationHeader: '2020 - 2024 | S1 Teknik Informatika',
+    educationDesc: 'Fokus studi pada rekayasa perangkat lunak, pengembangan sistem web, arsitektur jaringan komputer, basis data, serta pemecahan masalah komputasi dan implementasi teknologi informasi.',
     projects: [
       {
         id: 'p-1',
@@ -197,11 +197,20 @@ function resetToImageSample() {
   handleSave()
 }
 
-// Load saved custom CV on mount if exists
+// Load saved custom CV on mount if exists (and sanitize old 'mahasiswa' cached data)
 const savedCv = localStorage.getItem('autoapply_custom_cv')
 if (savedCv) {
   try {
     const parsed = JSON.parse(savedCv)
+    if (parsed.aboutMe && /mahasiswa/i.test(parsed.aboutMe)) {
+      parsed.aboutMe = parsed.aboutMe
+        .replace(/mahasiswa\s*(akhir)?\s*Teknik Informatika/gi, 'lulusan S1 Teknik Informatika')
+        .replace(/mahasiswa\s*(akhir)?/gi, 'lulusan S1')
+    }
+    if (parsed.educationHeader && /SMAN 1 Grabag/i.test(parsed.educationHeader) && !/Informatika/i.test(parsed.educationHeader)) {
+      parsed.educationHeader = '2020 - 2024 | S1 Teknik Informatika'
+      parsed.educationDesc = 'Fokus studi pada rekayasa perangkat lunak, pengembangan sistem web, arsitektur jaringan komputer, basis data, serta pemecahan masalah komputasi dan implementasi teknologi informasi.'
+    }
     cvData.value = { ...cvData.value, ...parsed }
   } catch (e) {
     console.warn('Could not parse saved custom CV:', e)

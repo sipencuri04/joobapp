@@ -3,7 +3,7 @@ import { getSupabaseClient, isSupabaseConfigured } from '../services/supabase'
 
 const DEFAULT_PROFILE = {
   fullName: 'Agung Setyawan',
-  headline: 'Mahasiswa Teknik Informatika & Web Developer',
+  headline: 'Lulusan S1 Teknik Informatika | Web Developer & IT Support',
   email: 'aggungset04@gmail.com',
   phone: '+62 821-3549-0941',
   location: 'Kleteran , Grabag , Magelang',
@@ -11,7 +11,7 @@ const DEFAULT_PROFILE = {
   linkedin: '',
   github: '',
   portfolioUrl: '',
-  bio: 'Saya Agung Setyawan, mahasiswa akhir Teknik Informatika dengan ketertarikan kuat pada tiga bidang utama, yaitu pengembangan web, jaringan komputer, dan pengolahan data menggunakan Python. Selain itu, saya juga memiliki kemampuan dalam maintenance PC serta perangkat IT lainnya.'
+  bio: 'Saya Agung Setyawan, lulusan S1 Teknik Informatika dengan ketertarikan kuat pada tiga bidang utama, yaitu pengembangan web, jaringan komputer, dan pengolahan data menggunakan Python. Selain itu, saya juga memiliki kemampuan dalam maintenance PC serta perangkat IT lainnya.'
 }
 
 const DEFAULT_EXPERIENCES = [
@@ -47,6 +47,14 @@ const DEFAULT_EXPERIENCES = [
 ]
 
 const DEFAULT_EDUCATIONS = [
+  {
+    id: 'edu-s1',
+    institution: 'Universitas',
+    degree: 'S1 Teknik Informatika',
+    major: 'Teknik Informatika',
+    year: '2020 - 2024',
+    gpa: ''
+  },
   {
     id: 'edu-1',
     institution: 'SMAN 1 Grabag',
@@ -178,10 +186,36 @@ export const useProfileStore = defineStore('profile', {
     const savedCoverLetter = localStorage.getItem('autoapply_cover_letter_template')
     const savedLastSync = localStorage.getItem('autoapply_last_supabase_sync')
 
+    let profile = savedProfile ? JSON.parse(savedProfile) : { ...DEFAULT_PROFILE }
+    if (profile.headline && /mahasiswa/i.test(profile.headline)) {
+      profile.headline = 'Lulusan S1 Teknik Informatika | Web Developer & IT Support'
+    }
+    if (profile.bio && /mahasiswa/i.test(profile.bio)) {
+      profile.bio = profile.bio
+        .replace(/mahasiswa\s*(akhir)?\s*Teknik Informatika/gi, 'lulusan S1 Teknik Informatika')
+        .replace(/mahasiswa\s*(akhir)?/gi, 'lulusan S1')
+    }
+
+    let educations = savedEdu ? JSON.parse(savedEdu) : [...DEFAULT_EDUCATIONS]
+    const hasS1 = educations.some(e => 
+      (e.degree && /s1|sarjana/i.test(e.degree)) || 
+      (e.major && /informatika/i.test(e.major))
+    )
+    if (!hasS1) {
+      educations.unshift({
+        id: 'edu-s1',
+        institution: 'Universitas',
+        degree: 'S1 Teknik Informatika',
+        major: 'Teknik Informatika',
+        year: '2020 - 2024',
+        gpa: ''
+      })
+    }
+
     return {
-      profile: savedProfile ? JSON.parse(savedProfile) : DEFAULT_PROFILE,
+      profile,
       experiences: savedExp ? JSON.parse(savedExp) : DEFAULT_EXPERIENCES,
-      educations: savedEdu ? JSON.parse(savedEdu) : DEFAULT_EDUCATIONS,
+      educations,
       skills: savedSkills ? JSON.parse(savedSkills) : DEFAULT_SKILLS,
       portfolios: savedPort ? JSON.parse(savedPort) : DEFAULT_PORTFOLIOS,
       masterCoverLetter: savedCoverLetter || DEFAULT_COVER_LETTER_TEMPLATE,
