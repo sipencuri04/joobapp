@@ -10,6 +10,10 @@ echo.
 
 cd /d "%~dp0"
 
+:: Nonaktifkan prompt update interaktif agar deploy tidak macet/berhenti
+set "VERCEL_DISABLE_UPDATES=1"
+set "NO_UPDATE_NOTIFIER=1"
+
 echo [1/4] Mengecek perubahan file (Git Status)...
 git status --short
 echo.
@@ -49,7 +53,10 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [4/4] Mengupload ke Vercel Production...
-call npx vercel --prod --yes
+call vercel deploy --prod --yes
+if %errorlevel% neq 0 (
+    call npx vercel deploy --prod --yes
+)
 if %errorlevel% neq 0 (
     color 0c
     echo.

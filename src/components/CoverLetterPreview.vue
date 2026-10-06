@@ -1,26 +1,57 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
-import { Copy, Check, Download, Edit3, Eye, RotateCcw, Save } from 'lucide-vue-next'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { Copy, Check, Download, Edit3, Eye, RotateCcw, Save, Sparkles } from 'lucide-vue-next'
 import { exportElementToPdf } from '../services/pdfExport'
 import { useProfileStore } from '../stores/profile'
 import { usePaperScale } from '../composables/usePaperScale'
+import { 
+  detectJobCategory, 
+  generateTailoredParagraph1, 
+  generateTailoredParagraph2, 
+  formatFullCoverLetterText, 
+  formatIndonesianDate 
+} from '../services/coverLetterGenerator'
 
 const props = defineProps({
   content: {
     type: String,
     default: ''
   },
+  bodyParagraph1: {
+    type: String,
+    default: ''
+  },
+  bodyParagraph2: {
+    type: String,
+    default: ''
+  },
   companyName: {
     type: String,
-    default: 'Haluan Lab'
+    default: ''
   },
   positionTitle: {
     type: String,
-    default: 'AI Co-Pilot'
+    default: ''
+  },
+  jobLocation: {
+    type: String,
+    default: ''
+  },
+  jobRequirements: {
+    type: Array,
+    default: () => []
+  },
+  jobSkills: {
+    type: Array,
+    default: () => []
+  },
+  jobSummary: {
+    type: String,
+    default: ''
   },
   applicantName: {
     type: String,
-    default: 'Agung Setyawan'
+    default: ''
   }
 })
 
@@ -31,80 +62,176 @@ const isEditing = ref(false)
 const copied = ref(false)
 const isExporting = ref(false)
 const saveNotice = ref(false)
+const autoTailoredNotice = ref(false)
+const hasManualEdits = ref(false)
 
 // Skala pratinjau kertas agar pas di layar kecil (dinonaktifkan saat export PDF)
 const { containerRef: paperWrapRef, paperRef, outerStyle: paperOuterStyle, innerStyle: paperInnerStyle } = usePaperScale(794, isExporting)
 
-// Format tanggal hari ini dalam bahasa Indonesia
-const todayIndo = computed(() => {
-  const d = new Date()
-  const months = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ]
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
+// Tanggal hari ini
+const todayIndo = computed(() => formatIndonesianDate())
+
+// Structured fields matching standard formal letter template
+const letterData = ref({
+  cityDate: '',
+  position: '',
+  company: '',
+  companyCity: '',
+  applicantName: '',
+  birthPlaceDate: '',
+  education: '',
+  domicile: '',
+  phone: '',
+  email: '',
+  bodyParagraph1: '',
+  bodyParagraph2: ''
 })
 
-// Structured fields matching user's exact template
-const letterData = ref({
-  cityDate: `Magelang, ${todayIndo.value}`,
-  position: props.positionTitle || 'AI Co-Pilot',
-  company: props.companyName || 'Haluan Lab',
-  companyCity: 'Kota Magelang',
-  applicantName: props.applicantName || profileStore.profile.fullName || 'Agung Setyawan',
-  birthPlaceDate: 'Magelang, 21 April 2001',
-  education: 'S1 Teknik Informatika',
-  domicile: 'Magelang',
-  phone: profileStore.profile.phone || '+62 857-9116-7764',
-  email: profileStore.profile.email || 'agungsetyawa99@gmail.com',
-  bodyParagraph1: `Saya memiliki latar belakang S1 Teknik Informatika dan pengalaman dalam pengembangan sistem informasi, termasuk sistem Inventory, Invoice, dan Asset Management untuk Grand Artos Hotel & Convention. Saya terbiasa melakukan analisis kebutuhan, pengembangan aplikasi, pengelolaan database, hingga implementasi sistem dengan teknologi seperti PHP, MySQL, Vue.js, React, Supabase, Vercel, Golang, Laravel, dan CodeIgniter 3/4. Saya memiliki ketertarikan pada AI, automation, dan API, serta senang mempelajari dan menerapkan teknologi baru untuk menyelesaikan berbagai kebutuhan secara efektif. Saya berharap dapat berkontribusi sekaligus mengembangkan kemampuan melalui posisi ${props.positionTitle || 'AI Co-Pilot'} di ${props.companyName || 'Haluan Lab'}.`,
-  bodyParagraph2: 'Sebagai bahan pertimbangan, saya siap melampirkan CV dan portofolio. Demikian lamaran ini saya sampaikan. Atas perhatian dan kesempatan yang diberikan, saya ucapkan terima kasih.'
+// Deteksi kategori bidang loker saat ini
+const currentCategory = computed(() => {
+  return detectJobCategory(
+    letterData.value.position || props.positionTitle,
+    props.jobRequirements,
+    props.jobSummary
+  )
+})
+
+// Helper untuk format kota perusahaan
+function resolveCompanyCity(location, company) {
+  if (location && location.trim() && !location.toLowerCase().includes('remote')) {
+    const loc = location.trim()
+    return loc.toLowerCase().startsWith('kota ') || loc.toLowerCase().startsWith('kabupaten ') 
+      ? loc 
+      : `Kota ${loc}`
+  }
+  if (company && company.trim()) {
+    const cleanComp = company.replace(/^(PT|CV|UD|Firma)\s+/i, '').trim()
+    return `Kota ${cleanComp}`
+  }
+  return 'Di Tempat'
+}
+
+// Adapt / tailor letter data based on props & candidate profile
+function applyAutoTailoring(force = false) {
+  const profile = profileStore.profile || {}
+  const educations = profileStore.educations || []
+  const city = profile.location ? profile.location.split(',').pop().trim() : 'Magelang'
+
+  const jobInfo = {
+    companyName: props.companyName || 'Perusahaan Terkait',
+    jobTitle: props.positionTitle || 'Posisi Terkait',
+    location: props.jobLocation || '',
+    requirements: props.jobRequirements || [],
+    skillsRequired: props.jobSkills || [],
+    summary: props.jobSummary || ''
+  }
+
+  const applicantProfile = {
+    ...profile,
+    educations,
+    experiences: profileStore.experiences || [],
+    skills: profileStore.skills || [],
+    portfolios: profileStore.portfolios || []
+  }
+
+  const bestEdu = (educations[0]?.degree ? `${educations[0].degree} ${educations[0].major || ''}`.trim() : null) 
+    || profile.headline 
+    || 'S1 Teknik Informatika'
+
+  letterData.value.cityDate = `${city}, ${todayIndo.value}`
+  letterData.value.position = props.positionTitle || 'Posisi Terkait'
+  letterData.value.company = props.companyName || 'Perusahaan Terkait'
+  letterData.value.companyCity = resolveCompanyCity(props.jobLocation, props.companyName)
+  letterData.value.applicantName = props.applicantName || profile.fullName || 'Agung Setyawan'
+  letterData.value.birthPlaceDate = profile.birthPlaceDate || 'Magelang, 21 April 2001'
+  letterData.value.education = bestEdu
+  letterData.value.domicile = city
+  letterData.value.phone = profile.phone || '+62 821-3549-0941'
+  letterData.value.email = profile.email || 'aggungset04@gmail.com'
+
+  // Jika dipaksa atau belum ada editan manual, sesuaikan paragraf sesuai bidang loker
+  if (force || !hasManualEdits.value) {
+    if (props.bodyParagraph1) {
+      letterData.value.bodyParagraph1 = props.bodyParagraph1
+    } else {
+      letterData.value.bodyParagraph1 = generateTailoredParagraph1(jobInfo, applicantProfile)
+    }
+
+    if (props.bodyParagraph2) {
+      letterData.value.bodyParagraph2 = props.bodyParagraph2
+    } else {
+      letterData.value.bodyParagraph2 = generateTailoredParagraph2()
+    }
+  }
+
+  emit('update:content', fullPlainText.value)
+}
+
+// Generate formatted plain text
+const fullPlainText = computed(() => {
+  return formatFullCoverLetterText(letterData.value)
 })
 
 // Watch for prop updates from scan/AI
+watch(() => props.bodyParagraph1, (newP1) => {
+  if (newP1 && newP1.trim()) {
+    letterData.value.bodyParagraph1 = newP1
+    hasManualEdits.value = false
+    emit('update:content', fullPlainText.value)
+  }
+})
+
+watch(() => props.bodyParagraph2, (newP2) => {
+  if (newP2 && newP2.trim()) {
+    letterData.value.bodyParagraph2 = newP2
+    emit('update:content', fullPlainText.value)
+  }
+})
+
 watch(() => props.companyName, (newCompany) => {
-  if (newCompany) {
+  if (newCompany && newCompany !== letterData.value.company) {
     letterData.value.company = newCompany
-    letterData.value.companyCity = `Kota ${newCompany.replace(/^(PT|CV)\s+/i, '')}`
+    letterData.value.companyCity = resolveCompanyCity(props.jobLocation, newCompany)
+    if (!hasManualEdits.value && !props.bodyParagraph1) {
+      applyAutoTailoring(true)
+    }
   }
 })
 
 watch(() => props.positionTitle, (newPos) => {
-  if (newPos) {
+  if (newPos && newPos !== letterData.value.position) {
     letterData.value.position = newPos
+    if (!hasManualEdits.value && !props.bodyParagraph1) {
+      applyAutoTailoring(true)
+    }
   }
 })
 
-// Generate formatted plain text
-const fullPlainText = computed(() => {
-  return `${letterData.value.cityDate}
-
-Perihal: Lamaran Pekerjaan – ${letterData.value.position}
-
-Yth.
-Tim Rekrutmen ${letterData.value.company}
-${letterData.value.companyCity}
-
-Dengan hormat,
-
-Saya yang bertanda tangan di bawah ini:
-Nama                  : ${letterData.value.applicantName}
-Tempat, Tanggal Lahir : ${letterData.value.birthPlaceDate}
-Pendidikan            : ${letterData.value.education}
-Domisili              : ${letterData.value.domicile}
-No. HP/WhatsApp       : ${letterData.value.phone}
-Email                 : ${letterData.value.email}
-
-    ${letterData.value.bodyParagraph1}
-
-    ${letterData.value.bodyParagraph2}
-
-Hormat saya,
-
-
-
-${letterData.value.applicantName}`
+watch(() => props.jobLocation, (newLoc) => {
+  if (newLoc) {
+    letterData.value.companyCity = resolveCompanyCity(newLoc, letterData.value.company)
+  }
 })
+
+watch(() => props.jobRequirements, () => {
+  if (!hasManualEdits.value && !props.bodyParagraph1) {
+    applyAutoTailoring(true)
+  }
+}, { deep: true })
+
+onMounted(() => {
+  applyAutoTailoring(false)
+})
+
+// Manual trigger auto tailor
+function handleTriggerAutoTailor() {
+  hasManualEdits.value = false
+  applyAutoTailoring(true)
+  autoTailoredNotice.value = true
+  setTimeout(() => {
+    autoTailoredNotice.value = false
+  }, 3000)
+}
 
 // Copy plain text to clipboard
 function copyToClipboard() {
@@ -116,6 +243,7 @@ function copyToClipboard() {
 }
 
 function handleSave() {
+  hasManualEdits.value = true
   saveNotice.value = true
   emit('update:content', fullPlainText.value)
   setTimeout(() => {
@@ -124,20 +252,8 @@ function handleSave() {
 }
 
 function resetToDefaultTemplate() {
-  letterData.value = {
-    cityDate: `Magelang, ${todayIndo.value}`,
-    position: props.positionTitle || 'AI Co-Pilot',
-    company: props.companyName || 'Haluan Lab',
-    companyCity: 'Kota Magelang',
-    applicantName: 'Agung Setyawan',
-    birthPlaceDate: 'Magelang, 21 April 2001',
-    education: 'S1 Teknik Informatika',
-    domicile: 'Magelang',
-    phone: '+62 857-9116-7764',
-    email: 'agungsetyawa99@gmail.com',
-    bodyParagraph1: `Saya memiliki latar belakang S1 Teknik Informatika dan pengalaman dalam pengembangan sistem informasi, termasuk sistem Inventory, Invoice, dan Asset Management untuk Grand Artos Hotel & Convention. Saya terbiasa melakukan analisis kebutuhan, pengembangan aplikasi, pengelolaan database, hingga implementasi sistem dengan teknologi seperti PHP, MySQL, Vue.js, React, Supabase, Vercel, Golang, Laravel, dan CodeIgniter 3/4. Saya memiliki ketertarikan pada AI, automation, dan API, serta senang mempelajari dan menerapkan teknologi baru untuk menyelesaikan berbagai kebutuhan secara efektif. Saya berharap dapat berkontribusi sekaligus mengembangkan kemampuan melalui posisi ${props.positionTitle || 'AI Co-Pilot'} di ${props.companyName || 'Haluan Lab'}.`,
-    bodyParagraph2: 'Sebagai bahan pertimbangan, saya siap melampirkan CV dan portofolio. Demikian lamaran ini saya sampaikan. Atas perhatian dan kesempatan yang diberikan, saya ucapkan terima kasih.'
-  }
+  hasManualEdits.value = false
+  applyAutoTailoring(true)
 }
 
 async function handleDownloadPdf() {
@@ -160,15 +276,34 @@ async function handleDownloadPdf() {
   <div class="flex flex-col h-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
     <!-- Header Toolbar -->
     <div class="px-3 py-3 sm:px-5 bg-slate-50 border-b border-slate-200 flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between md:gap-3 xl:flex-col xl:items-stretch 2xl:flex-row 2xl:items-center">
-      <div class="flex items-center gap-2 min-w-0 px-1 sm:px-0">
+      <div class="flex items-center gap-2 min-w-0 px-1 sm:px-0 flex-wrap">
         <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 shrink-0"></span>
         <h3 class="font-semibold text-sm text-slate-800 truncate">Surat Lamaran Formal</h3>
-        <span class="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 hidden 2xl:inline whitespace-nowrap">
-          Times New Roman • 12pt
+        
+        <!-- Detected Field Badge -->
+        <span 
+          class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1 shrink-0"
+          :class="currentCategory.key !== 'general' 
+            ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
+            : 'bg-slate-100 text-slate-600 border-slate-200'"
+          title="Bidang pekerjaan terdeteksi otomatis dari judul dan kualifikasi lowongan"
+        >
+          <Sparkles class="w-3 h-3 text-indigo-500" />
+          <span>Bidang: {{ currentCategory.label }}</span>
         </span>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- Button: Sesuaikan Otomatis -->
+        <button
+          @click="handleTriggerAutoTailor"
+          class="btn-secondary btn-sm text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+          title="Sesuaikan ulang paragraf isi surat otomatis dengan bidang lowongan saat ini"
+        >
+          <Sparkles class="w-4 h-4 text-indigo-600" />
+          <span class="hidden sm:inline">Sesuaikan Otomatis</span>
+        </button>
+
         <!-- Edit Toggle Button -->
         <button
           @click="isEditing = !isEditing"
@@ -196,8 +331,8 @@ async function handleDownloadPdf() {
         <button
           @click="resetToDefaultTemplate"
           class="btn-secondary btn-sm w-10 px-0 xl:w-auto xl:px-3"
-          title="Reset ke template standar"
-          aria-label="Reset ke template standar"
+          title="Reset & sesuaikan otomatis ke bidang lowongan ini"
+          aria-label="Reset ke format bidang lowongan ini"
         >
           <RotateCcw class="w-4 h-4 text-slate-500" />
           <span class="hidden xl:inline">Reset</span>
@@ -215,7 +350,13 @@ async function handleDownloadPdf() {
       </div>
     </div>
 
-    <!-- Notification -->
+    <!-- Notification: Auto tailored -->
+    <div v-if="autoTailoredNotice" class="bg-indigo-50 border-b border-indigo-200 px-4 py-2.5 text-[13px] text-indigo-900 flex items-center gap-2" role="status">
+      <Sparkles class="w-4 h-4 text-indigo-600 shrink-0" />
+      <span class="font-medium">Surat lamaran berhasil disesuaikan otomatis untuk bidang: <strong>{{ currentCategory.label }}</strong>!</span>
+    </div>
+
+    <!-- Notification: Save manual edits -->
     <div v-if="saveNotice" class="bg-emerald-50 border-b border-emerald-200 px-4 py-2.5 text-[13px] text-emerald-800 flex items-center gap-2" role="status">
       <Check class="w-4 h-4 text-emerald-600 shrink-0" />
       <span class="font-medium">Surat lamaran berhasil diperbarui!</span>
@@ -235,6 +376,12 @@ async function handleDownloadPdf() {
             <Save class="w-4 h-4" />
             <span>Terapkan</span>
           </button>
+        </div>
+
+        <!-- Info Tip -->
+        <div class="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl text-xs text-indigo-800 flex items-center gap-2">
+          <Sparkles class="w-4 h-4 text-indigo-600 shrink-0" />
+          <span>Isi surat di bawah ini otomatis disesuaikan untuk lowongan bidang <strong>{{ currentCategory.label }}</strong>. Anda bebas menyempurnakan atau menyesuaikan kalimat secara manual.</span>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -280,16 +427,26 @@ async function handleDownloadPdf() {
               <input v-model="letterData.phone" type="tel" inputmode="tel" class="form-input" autocomplete="tel" />
             </div>
             <div>
-              <label class="form-label">Email (Gmail)</label>
+              <label class="form-label">Email</label>
               <input v-model="letterData.email" type="email" inputmode="email" class="form-input" autocomplete="email" />
             </div>
           </div>
         </div>
 
         <div class="pt-4 border-t border-slate-100 space-y-4">
-          <h5 class="text-xs font-bold uppercase tracking-wider text-slate-500">Isi Surat Lamaran</h5>
+          <div class="flex items-center justify-between gap-2">
+            <h5 class="text-xs font-bold uppercase tracking-wider text-slate-500">Isi Surat Lamaran</h5>
+            <button 
+              type="button" 
+              @click="handleTriggerAutoTailor" 
+              class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
+            >
+              <Sparkles class="w-3.5 h-3.5" />
+              <span>Generate ulang paragraf bidang ini</span>
+            </button>
+          </div>
           <div>
-            <label class="form-label">Paragraf 1: Pengalaman & Kualifikasi</label>
+            <label class="form-label">Paragraf 1: Pengalaman & Kualifikasi (Disesuaikan Bidang Loker)</label>
             <textarea v-model="letterData.bodyParagraph1" rows="7" class="form-input"></textarea>
           </div>
           <div>
@@ -359,28 +516,28 @@ async function handleDownloadPdf() {
               <td class="py-0.5 align-top">{{ letterData.applicantName }}</td>
             </tr>
             <tr>
-              <td class="py-0.5 align-top whitespace-nowrap">Tempat, Tanggal Lahir</td>
-              <td class="py-0.5 align-top text-center">:</td>
+              <td class="w-48 py-0.5 align-top whitespace-nowrap">Tempat, Tanggal Lahir</td>
+              <td class="w-4 py-0.5 align-top text-center">:</td>
               <td class="py-0.5 align-top">{{ letterData.birthPlaceDate }}</td>
             </tr>
             <tr>
-              <td class="py-0.5 align-top whitespace-nowrap">Pendidikan</td>
-              <td class="py-0.5 align-top text-center">:</td>
+              <td class="w-48 py-0.5 align-top whitespace-nowrap">Pendidikan</td>
+              <td class="w-4 py-0.5 align-top text-center">:</td>
               <td class="py-0.5 align-top">{{ letterData.education }}</td>
             </tr>
             <tr>
-              <td class="py-0.5 align-top whitespace-nowrap">Domisili</td>
-              <td class="py-0.5 align-top text-center">:</td>
+              <td class="w-48 py-0.5 align-top whitespace-nowrap">Domisili</td>
+              <td class="w-4 py-0.5 align-top text-center">:</td>
               <td class="py-0.5 align-top">{{ letterData.domicile }}</td>
             </tr>
             <tr>
-              <td class="py-0.5 align-top whitespace-nowrap">No. HP/WhatsApp</td>
-              <td class="py-0.5 align-top text-center">:</td>
+              <td class="w-48 py-0.5 align-top whitespace-nowrap">No. HP/WhatsApp</td>
+              <td class="w-4 py-0.5 align-top text-center">:</td>
               <td class="py-0.5 align-top">{{ letterData.phone }}</td>
             </tr>
             <tr>
-              <td class="py-0.5 align-top whitespace-nowrap">Email</td>
-              <td class="py-0.5 align-top text-center">:</td>
+              <td class="w-48 py-0.5 align-top whitespace-nowrap">Email</td>
+              <td class="w-4 py-0.5 align-top text-center">:</td>
               <td class="py-0.5 align-top">{{ letterData.email }}</td>
             </tr>
           </tbody>

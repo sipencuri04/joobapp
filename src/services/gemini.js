@@ -1,4 +1,11 @@
 // Google Gemini API Service for Multimodal Screenshot Analysis & Document Tailoring
+import { 
+  generateTailoredParagraph1, 
+  generateTailoredParagraph2, 
+  formatFullCoverLetterText, 
+  formatIndonesianDate,
+  detectJobCategory 
+} from './coverLetterGenerator'
 
 let cachedWorkingModel = null
 
@@ -330,15 +337,27 @@ ${masterCoverLetter || ''}
 """
 
 Instruksi Khusus:
-1. Buat "tailoredCoverLetter" dalam bahasa Indonesia yang sangat profesional, sopan, persuasif, dan menyoroti kecocokan pengalaman & keahlian pelamar dengan syarat lowongan ini. Sertakan tanggal hari ini, kepada Yth. HRD / Tim Rekrutmen ${jobData.companyName || 'Perusahaan'}.
-2. Buat "tailoredEmailSubject" subjek email resmi standar HR (Contoh: "Lamaran Pekerjaan - ${jobData.jobTitle || 'Posisi'} - ${userProfile.fullName || 'Pelamar'}").
-3. Buat "tailoredWhatsAppMessage" pesan pengantar profesional untuk dikirim via WhatsApp. Cantumkan salam sopan, perkenalan diri, posisi yang dilamar, ringkasan 2-3 proyek portofolio pelamar yang paling relevan (judul proyek dan teknologi yang digunakan), tautan portfolio/GitHub jika ada, serta kalimat bahwa pelamar melampirkan dokumen PDF CV ATS.
-4. Buat "recommendedSkills" (array nama skill pelamar yang paling cocok dan harus di-highlight).
-5. Buat "tailoredProfessionalSummary" (1 paragraf ringkasan CV yang disesuaikan dengan posisi ini).
-6. Tentukan "recommendedPortfolioTitles" (array judul portofolio milik pelamar yang paling relevan dengan posisi ini).
+1. Buat "coverLetterParagraph1": 1 paragraf inti kualifikasi & pengalaman (4-6 kalimat) yang SANGAT PRESISI menyesuaikan dengan BIDANG lowongan pekerjaan ini (${jobData.jobTitle || 'posisi'}).
+   - Jika bidang Administrasi / Operasional / Gudang / Kasir: soroti ketelitian, manajemen dokumen/data, koordinasi, dan sistem operasional.
+   - Jika bidang IT / Software / Web: soroti tech stack, database, perancangan sistem, problem solving, dan REST API.
+   - Jika bidang IT Support / Hardware / Jaringan: soroti troubleshooting hardware, jaringan LAN/WLAN, pemeliharaan komputer, CCTV, dan helpdesk.
+   - Jika bidang Data / AI / Python: soroti pengolahan data, analisis, Python, otomasi, dan machine learning.
+   - Jika bidang Desain Grafis / Kreatif / Video: soroti estetika visual, software kreatif, kepekaan layout/tipografi, dan portofolio desain.
+   - Jika bidang Marketing / Sales: soroti komunikasi persuasif, digital marketing, media sosial, dan orientasi target.
+   - Jika bidang Customer Service / Pelayanan / F&B: soroti komunikasi prima, keramahan, penanganan keluhan, dan service excellence.
+   - Jika bidang lainnya: sesuaikan latar belakang pelamar agar relevan dan menarik bagi perusahaan penerima.
+2. Buat "coverLetterParagraph2": Paragraf penutup formal dan kesiapan melampirkan berkas CV serta portofolio.
+3. Buat "tailoredCoverLetter": Teks lengkap surat lamaran formal standar Indonesia (Tanggal, Perihal, Alamat HRD, Salam Pembuka, Data Diri Pelamar, Paragraf Isi yang disesuaikan dengan bidang loker, Penutup, dan Tanda Tangan). Sertakan tanggal hari ini, kepada Yth. HRD / Tim Rekrutmen ${jobData.companyName || 'Perusahaan'}.
+4. Buat "tailoredEmailSubject": subjek email resmi standar HR (Contoh: "Lamaran Pekerjaan - ${jobData.jobTitle || 'Posisi'} - ${userProfile.fullName || 'Pelamar'}").
+5. Buat "tailoredWhatsAppMessage": pesan pengantar profesional untuk dikirim via WhatsApp. Cantumkan salam sopan, perkenalan diri, posisi yang dilamar, ringkasan 2-3 proyek portofolio pelamar yang paling relevan (judul proyek dan teknologi yang digunakan), tautan portfolio/GitHub jika ada, serta kalimat bahwa pelamar melampirkan dokumen PDF CV ATS.
+6. Buat "recommendedSkills": (array nama skill pelamar yang paling cocok dan harus di-highlight).
+7. Buat "tailoredProfessionalSummary": (1 paragraf ringkasan CV yang disesuaikan dengan posisi ini).
+8. Tentukan "recommendedPortfolioTitles": (array judul portofolio milik pelamar yang paling relevan dengan posisi ini).
 
 Kembalikan HANYA format JSON valid tanpa format markdown lain:
 {
+  "coverLetterParagraph1": "Saya memiliki latar belakang... [paragraf kualifikasi yang disesuaikan persis dengan bidang loker ini]",
+  "coverLetterParagraph2": "Sebagai bahan pertimbangan Bapak/Ibu, saya siap melampirkan...",
   "tailoredCoverLetter": "Teks lengkap surat lamaran formal dalam bahasa Indonesia...",
   "tailoredEmailSubject": "Lamaran Pekerjaan - [Posisi] - [Nama]",
   "tailoredWhatsAppMessage": "Selamat pagi/siang Tim HRD [Perusahaan], perkenalkan saya [Nama]...",
@@ -361,44 +380,39 @@ function generateFallbackTailoredDocs({ jobData, userProfile, masterCoverLetter,
   const company = jobData.companyName || 'HRD / Tim Rekrutmen'
   const position = jobData.jobTitle || 'Posisi Terkait'
   const name = userProfile.fullName || 'Nama Pelamar'
-  const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+  const today = formatIndonesianDate()
 
-  let coverLetter = masterCoverLetter || `Hal: Lamaran Pekerjaan - ${position}
+  const paragraph1 = generateTailoredParagraph1(jobData, userProfile)
+  const paragraph2 = generateTailoredParagraph2()
 
-Kepada Yth.
-HRD / Tim Rekrutmen ${company}
-Di Tempat
+  const city = userProfile.location ? userProfile.location.split(',').pop().trim() : 'Magelang'
+  const companyCity = jobData.location || (company.startsWith('PT') || company.startsWith('CV') ? `Kota ${company.replace(/^(PT|CV)\s+/i, '')}` : 'Di Tempat')
 
-Dengan hormat,
-
-Sehubungan dengan informasi lowongan pekerjaan untuk posisi ${position} di ${company} yang saya peroleh, saya bermaksud untuk mengajukan diri guna bergabung dengan perusahaan yang Bapak/Ibu pimpin.
-
-Saya memiliki latar belakang dan pengalaman kerja yang relevan di bidang ini. Selama berkarir, saya terbiasa menyelesaikan tanggung jawab secara profesional, bekerja dalam tim maupun mandiri, serta terus beradaptasi dengan perkembangan teknologi dan kebutuhan industri.
-
-Besar harapan saya untuk diberikan kesempatan wawancara, agar saya dapat menjelaskan lebih mendalam mengenai kualifikasi, pengalaman, dan bagaimana kontribusi saya dapat mendukung kemajuan ${company}.
-
-Demikian surat lamaran ini saya sampaikan. Atas perhatian dan kesempatan yang Bapak/Ibu berikan, saya ucapkan terima kasih.
-
-Hormat saya,
-
-${name}`
-
-  coverLetter = coverLetter
-    .replace(/{{company}}/g, company)
-    .replace(/{{position}}/g, position)
-    .replace(/{{name}}/g, name)
-    .replace(/{{phone}}/g, userProfile.phone || '')
-    .replace(/{{email}}/g, userProfile.email || '')
-    .replace(/{{date}}/g, today)
+  const fullLetter = formatFullCoverLetterText({
+    cityDate: `${city}, ${today}`,
+    position,
+    company,
+    companyCity,
+    applicantName: name,
+    birthPlaceDate: userProfile.birthPlaceDate || 'Magelang, 21 April 2001',
+    education: (userProfile.educations?.[0]?.degree ? `${userProfile.educations[0].degree} ${userProfile.educations[0].major || ''}`.trim() : null) || userProfile.headline || 'S1 Teknik Informatika',
+    domicile: city,
+    phone: userProfile.phone || '',
+    email: userProfile.email || '',
+    bodyParagraph1: paragraph1,
+    bodyParagraph2: paragraph2
+  })
 
   const subject = `Lamaran Pekerjaan: ${position} - ${name}`
   const wa = `Halo HRD / Rekruter ${company},\n\nPerkenalkan saya ${name}. Saya bermaksud melamar lowongan ${position} yang sedang dibuka.\n\nBersama pesan ini saya melampirkan berkas Curriculum Vitae (CV) dan tautan portofolio proyek saya. Terima kasih atas perhatian dan kesempatannya.`
 
   return {
-    tailoredCoverLetter: coverLetter,
+    tailoredCoverLetter: fullLetter,
+    coverLetterParagraph1: paragraph1,
+    coverLetterParagraph2: paragraph2,
     tailoredEmailSubject: subject,
     tailoredWhatsAppMessage: wa,
-    tailoredProfessionalSummary: userProfile.bio || 'Web Developer berorientasi hasil dengan keahlian dalam perancangan aplikasi dan integrasi sistem.',
+    tailoredProfessionalSummary: userProfile.bio || 'Profesional berorientasi hasil dengan keahlian yang relevan untuk mendukung produktivitas perusahaan.',
     recommendedSkills: (userProfile.skills || []).slice(0, 5).map(s => s.name || s),
     recommendedPortfolioTitles: (portfolioItems || []).slice(0, 3).map(p => p.title || p)
   }

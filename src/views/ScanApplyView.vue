@@ -6,6 +6,7 @@ import { useApplicationStore } from '../stores/applications'
 import { useSettingsStore } from '../stores/settings'
 import { executeJobScan, executeTailorDocuments } from '../services/aiManager'
 import { getMockJobData, cleanIndonesianPhoneNumber } from '../services/gemini'
+import { generateTailoredParagraph1, generateTailoredParagraph2, formatFullCoverLetterText, formatIndonesianDate } from '../services/coverLetterGenerator'
 
 import CoverLetterPreview from '../components/CoverLetterPreview.vue'
 import CvPreview from '../components/CvPreview.vue'
@@ -164,7 +165,11 @@ async function triggerAutoTailor() {
     const jobInfo = {
       companyName: current.value.companyName,
       jobTitle: current.value.jobTitle,
+      location: current.value.location,
       requirements: current.value.requirements || [],
+      responsibilities: current.value.responsibilities || [],
+      skillsRequired: current.value.skillsRequired || [],
+      summary: current.value.summary || '',
       contactEmail: current.value.email,
       contactPhone: current.value.phone
     }
@@ -185,20 +190,42 @@ async function triggerAutoTailor() {
         profileStore.masterCoverLetter
       )
     } else {
-      // Offline fallback template interpolation
-      const cl = profileStore.masterCoverLetter
-        .replace(/{{company}}/g, current.value.companyName || 'Perusahaan')
-        .replace(/{{position}}/g, current.value.jobTitle || 'Posisi')
-        .replace(/{{name}}/g, profileStore.profile.fullName)
-        .replace(/{{phone}}/g, profileStore.profile.phone)
-        .replace(/{{email}}/g, profileStore.profile.email)
-        .replace(/{{date}}/g, new Date().toLocaleDateString('id-ID'))
+      // Dynamic fallback template matching job field
+      const applicantProfileForGen = {
+        ...profileStore.profile,
+        educations: profileStore.educations,
+        experiences: profileStore.experiences,
+        skills: profileStore.skills,
+        portfolios: profileStore.portfolios
+      }
+      const paragraph1 = generateTailoredParagraph1(jobInfo, applicantProfileForGen)
+      const paragraph2 = generateTailoredParagraph2()
+      const city = profileStore.profile.location ? profileStore.profile.location.split(',').pop().trim() : 'Magelang'
+      const companyCity = current.value.location || (current.value.companyName ? `Kota ${current.value.companyName.replace(/^(PT|CV)\s+/i, '')}` : 'Di Tempat')
+      const today = formatIndonesianDate()
+
+      const fullCl = formatFullCoverLetterText({
+        cityDate: `${city}, ${today}`,
+        position: current.value.jobTitle || 'Posisi',
+        company: current.value.companyName || 'Perusahaan',
+        companyCity,
+        applicantName: profileStore.profile.fullName,
+        birthPlaceDate: profileStore.profile.birthPlaceDate || 'Magelang, 21 April 2001',
+        education: (profileStore.educations?.[0]?.degree ? `${profileStore.educations[0].degree} ${profileStore.educations[0].major || ''}`.trim() : null) || profileStore.profile.headline || 'S1 Teknik Informatika',
+        domicile: city,
+        phone: profileStore.profile.phone,
+        email: profileStore.profile.email,
+        bodyParagraph1: paragraph1,
+        bodyParagraph2: paragraph2
+      })
 
       tailoredResult = {
-        coverLetter: cl,
+        tailoredCoverLetter: fullCl,
+        coverLetterParagraph1: paragraph1,
+        coverLetterParagraph2: paragraph2,
         emailSubject: `Lamaran Pekerjaan: ${current.value.jobTitle} - ${profileStore.profile.fullName}`,
         professionalSummary: profileStore.profile.bio,
-        whatsAppMessage: `Halo HRD / Tim Rekrutmen ${current.value.companyName},\n\nPerkenalkan saya ${profileStore.profile.fullName}. Saya tertarik untuk melamar posisi ${current.value.jobTitle} sesuai informasi lowongan yang saya lihat.\n\nSaya telah melampirkan Curriculum Vitae (CV) dan tautan portofolio proyek saya. Terima kasih banyak atas kesempatannya.`,
+        whatsAppMessage: `Halo HRD / Tim Rekrutmen ${current.value.companyName},\n\nPerkenalkan saya ${profileStore.profile.fullName}. Saya bermaksud melamar posisi ${current.value.jobTitle} di ${current.value.companyName}.\n\nBersama pesan ini saya melampirkan berkas Curriculum Vitae (CV) ATS dan berkas pendukung saya. Terima kasih atas perhatian dan kesempatannya.`,
         recommendedPortfolioIds: profileStore.portfolios.slice(0, 3).map(p => p.id)
       }
     }
@@ -559,8 +586,14 @@ function loadDemoSample() {
           <CoverLetterPreview
             :content="current.tailoredCoverLetter"
             @update:content="current.tailoredCoverLetter = $event"
+            :bodyParagraph1="current.coverLetterParagraph1"
+            :bodyParagraph2="current.coverLetterParagraph2"
             :companyName="current.companyName"
             :positionTitle="current.jobTitle"
+            :jobLocation="current.location"
+            :jobRequirements="current.requirements"
+            :jobSkills="current.skillsRequired"
+            :jobSummary="current.summary"
             :applicantName="profileStore.profile.fullName"
           />
         </div>

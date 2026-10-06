@@ -7,6 +7,7 @@ const DEFAULT_PROFILE = {
   email: 'aggungset04@gmail.com',
   phone: '+62 821-3549-0941',
   location: 'Kleteran , Grabag , Magelang',
+  birthPlaceDate: 'Magelang, 21 April 2001',
   linkedin: '',
   github: '',
   portfolioUrl: '',

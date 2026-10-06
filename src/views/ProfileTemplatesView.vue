@@ -82,6 +82,8 @@ const sections = computed(() => [
   { key: 'skills', label: 'Skill', icon: Sparkles, count: profileStore.skills.length }
 ])
 
+const activeSectionMeta = computed(() => sections.value.find(sec => sec.key === activeSection.value) || sections.value[0])
+
 function triggerSave() {
   profileStore.persist()
   savedNotification.value = true
@@ -256,22 +258,22 @@ function handleResetDefaults() {
       <span class="font-medium">{{ syncNotification }}</span>
     </div>
 
-    <!-- Navigasi Seksi: tab chip yang bisa di-scroll -->
+    <!-- Navigasi Seksi: dropdown -->
     <div class="sticky top-14 lg:top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2 bg-slate-50/95 backdrop-blur-md lg:static lg:bg-transparent lg:backdrop-blur-none lg:py-0">
-      <div class="flex gap-2 overflow-x-auto hide-scrollbar lg:flex-wrap" role="tablist" aria-label="Bagian data">
-        <button
-          v-for="sec in sections"
-          :key="sec.key"
-          @click="activeSection = sec.key"
-          role="tab"
-          :aria-selected="activeSection === sec.key"
-          class="chip"
-          :class="activeSection === sec.key ? 'chip-active' : 'chip-idle'"
+      <div class="relative w-full sm:max-w-xs">
+        <component
+          :is="activeSectionMeta.icon"
+          class="w-[18px] h-[18px] text-indigo-600 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+        />
+        <select
+          v-model="activeSection"
+          class="form-select pl-11 font-semibold shadow-xs"
+          aria-label="Pilih bagian data"
         >
-          <component :is="sec.icon" class="w-4 h-4" />
-          <span>{{ sec.label }}</span>
-          <span v-if="sec.count !== undefined" class="text-[11px] font-bold opacity-60">{{ sec.count }}</span>
-        </button>
+          <option v-for="sec in sections" :key="sec.key" :value="sec.key">
+            {{ sec.label }}{{ sec.count !== undefined ? ` (${sec.count})` : '' }}
+          </option>
+        </select>
       </div>
     </div>
 
@@ -428,6 +430,10 @@ function handleResetDefaults() {
           <div>
             <label class="form-label" for="pf-location">Kota Domisili</label>
             <input id="pf-location" v-model="profileStore.profile.location" type="text" autocomplete="address-level2" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label" for="pf-birth">Tempat, Tanggal Lahir (Surat Lamaran)</label>
+            <input id="pf-birth" v-model="profileStore.profile.birthPlaceDate" type="text" placeholder="Magelang, 21 April 2001" class="form-input" />
           </div>
         </div>
       </div>

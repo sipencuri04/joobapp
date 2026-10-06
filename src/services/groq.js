@@ -317,15 +317,27 @@ ${masterCoverLetter || ''}
 """
 
 Instruksi Khusus:
-1. Buat "tailoredCoverLetter" dalam bahasa Indonesia yang sangat profesional, sopan, persuasif, dan menyoroti kecocokan pengalaman & keahlian pelamar dengan syarat lowongan ini.
-2. Buat "tailoredEmailSubject" subjek email resmi standar HR (Contoh: "Lamaran Pekerjaan - ${jobData.jobTitle || 'Posisi'} - ${userProfile.fullName || 'Pelamar'}").
-3. Buat "tailoredWhatsAppMessage" pesan pengantar profesional untuk dikirim via WhatsApp. Cantumkan salam sopan, perkenalan diri, posisi yang dilamar, ringkasan 2-3 proyek portofolio pelamar yang paling relevan (judul proyek dan teknologi yang digunakan), tautan portfolio/GitHub jika ada, serta kalimat bahwa pelamar melampirkan dokumen PDF CV ATS.
-4. Buat "recommendedSkills" (array nama skill pelamar yang paling cocok dan harus di-highlight).
-5. Buat "tailoredProfessionalSummary" (1 paragraf ringkasan CV yang disesuaikan dengan posisi ini).
-6. Tentukan "recommendedPortfolioTitles" (array judul portofolio milik pelamar yang paling relevan dengan posisi ini).
+1. Buat "coverLetterParagraph1": 1 paragraf inti kualifikasi & pengalaman (4-6 kalimat) yang SANGAT PRESISI menyesuaikan dengan BIDANG lowongan pekerjaan ini (${jobData.jobTitle || 'posisi'}).
+   - Jika bidang Administrasi / Operasional / Gudang / Kasir: soroti ketelitian, manajemen dokumen/data, koordinasi, dan sistem operasional.
+   - Jika bidang IT / Software / Web: soroti tech stack, database, perancangan sistem, problem solving, dan REST API.
+   - Jika bidang IT Support / Hardware / Jaringan: soroti troubleshooting hardware, jaringan LAN/WLAN, pemeliharaan komputer, CCTV, dan helpdesk.
+   - Jika bidang Data / AI / Python: soroti pengolahan data, analisis, Python, otomasi, dan machine learning.
+   - Jika bidang Desain Grafis / Kreatif / Video: soroti estetika visual, software kreatif, kepekaan layout/tipografi, dan portofolio desain.
+   - Jika bidang Marketing / Sales: soroti komunikasi persuasif, digital marketing, media sosial, dan orientasi target.
+   - Jika bidang Customer Service / Pelayanan / F&B: soroti komunikasi prima, keramahan, penanganan keluhan, dan service excellence.
+   - Jika bidang lainnya: sesuaikan latar belakang pelamar agar relevan dan menarik bagi perusahaan penerima.
+2. Buat "coverLetterParagraph2": Paragraf penutup formal dan kesiapan melampirkan berkas CV serta portofolio.
+3. Buat "tailoredCoverLetter": Teks lengkap surat lamaran formal standar Indonesia (Tanggal, Perihal, Alamat HRD, Salam Pembuka, Data Diri Pelamar, Paragraf Isi yang disesuaikan dengan bidang loker, Penutup, dan Tanda Tangan).
+4. Buat "tailoredEmailSubject" subjek email resmi standar HR (Contoh: "Lamaran Pekerjaan - ${jobData.jobTitle || 'Posisi'} - ${userProfile.fullName || 'Pelamar'}").
+5. Buat "tailoredWhatsAppMessage" pesan pengantar profesional untuk dikirim via WhatsApp. Cantumkan salam sopan, perkenalan diri, posisi yang dilamar, ringkasan 2-3 proyek portofolio pelamar yang paling relevan (judul proyek dan teknologi yang digunakan), tautan portfolio/GitHub jika ada, serta kalimat bahwa pelamar melampirkan dokumen PDF CV ATS.
+6. Buat "recommendedSkills" (array nama skill pelamar yang paling cocok dan harus di-highlight).
+7. Buat "tailoredProfessionalSummary" (1 paragraf ringkasan CV yang disesuaikan dengan posisi ini).
+8. Tentukan "recommendedPortfolioTitles" (array judul portofolio milik pelamar yang paling relevan dengan posisi ini).
 
 Kembalikan HANYA format JSON valid berikut:
 {
+  "coverLetterParagraph1": "Saya memiliki latar belakang... [paragraf kualifikasi yang disesuaikan persis dengan bidang loker ini]",
+  "coverLetterParagraph2": "Sebagai bahan pertimbangan Bapak/Ibu, saya siap melampirkan...",
   "tailoredCoverLetter": "Teks lengkap surat lamaran formal dalam bahasa Indonesia...",
   "tailoredEmailSubject": "Lamaran Pekerjaan - [Posisi] - [Nama]",
   "tailoredWhatsAppMessage": "Selamat pagi/siang Tim HRD [Perusahaan], perkenalkan saya [Nama]...",

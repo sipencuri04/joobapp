@@ -22,6 +22,8 @@ export const useApplicationStore = defineStore('application', {
         rawText: '',
         // Tailored contents
         tailoredCoverLetter: '',
+        coverLetterParagraph1: '',
+        coverLetterParagraph2: '',
         tailoredEmailSubject: '',
         tailoredWhatsAppMessage: '',
         tailoredProfessionalSummary: '',
@@ -70,6 +72,12 @@ export const useApplicationStore = defineStore('application', {
     updateTailoredData(tailored) {
       if (!tailored) return
       this.currentJob.tailoredCoverLetter = tailored.tailoredCoverLetter || tailored.coverLetter || this.currentJob.tailoredCoverLetter
+      if (tailored.coverLetterParagraph1) {
+        this.currentJob.coverLetterParagraph1 = tailored.coverLetterParagraph1
+      }
+      if (tailored.coverLetterParagraph2) {
+        this.currentJob.coverLetterParagraph2 = tailored.coverLetterParagraph2
+      }
       this.currentJob.tailoredEmailSubject = tailored.tailoredEmailSubject || tailored.emailSubject || this.currentJob.tailoredEmailSubject
       this.currentJob.tailoredWhatsAppMessage = tailored.tailoredWhatsAppMessage || tailored.whatsAppMessage || this.currentJob.tailoredWhatsAppMessage
       this.currentJob.tailoredProfessionalSummary = tailored.tailoredProfessionalSummary || tailored.professionalSummary || this.currentJob.tailoredProfessionalSummary
