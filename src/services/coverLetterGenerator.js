@@ -266,3 +266,51 @@ Saya tertarik melamar posisi ${position}. Saya memiliki pengalaman dalam ${exper
 
 CV saya lampirkan sebagai bahan pertimbangan. Terima kasih atas waktu dan kesempatannya, Bapak/Ibu. 🙏`
 }
+
+/**
+ * Skor relevansi posisi untuk lulusan Teknik Informatika (IT, Web, Support, Tech)
+ */
+export function scorePositionRelevance(position = '') {
+  const pos = position.toLowerCase()
+  if (pos.includes('it support') || pos.includes('support it') || pos.includes('tech support')) return 100
+  if (pos.includes('web') || pos.includes('frontend') || pos.includes('backend') || pos.includes('fullstack') || pos.includes('developer') || pos.includes('programmer') || pos.includes('software')) return 95
+  if (pos.includes('teknisi') || pos.includes('technician') || pos.includes('hardware') || pos.includes('network') || pos.includes('jaringan')) return 90
+  if (pos.includes('data') || pos.includes('python') || pos.includes('ai') || pos.includes('analyst')) return 85
+  if (pos.includes('it') || pos.includes('ict') || pos.includes('system') || pos.includes('sistem')) return 80
+  if (pos.includes('ui') || pos.includes('ux') || pos.includes('designer') || pos.includes('desain')) return 75
+  if (pos.includes('admin operasional') || pos.includes('admin') || pos.includes('administrasi') || pos.includes('data entry') || pos.includes('back office')) return 60
+  if (pos.includes('marketing') || pos.includes('digital') || pos.includes('social media') || pos.includes('sales')) return 40
+  return 10
+}
+
+/**
+ * Cek apakah posisi terkait dengan bidang IT / Teknologi / Komputer
+ */
+export function isPositionItRelated(position = '') {
+  return scorePositionRelevance(position) >= 80
+}
+
+/**
+ * Urutkan daftar posisi berdasarkan kecocokan tertinggi untuk lulusan Teknik Informatika
+ */
+export function sortPositionsByRelevance(positionsList = []) {
+  if (!Array.isArray(positionsList)) return []
+  return [...positionsList].sort((a, b) => scorePositionRelevance(b) - scorePositionRelevance(a))
+}
+
+/**
+ * Pilih otomatis posisi terbaik untuk lulusan IT dari daftar posisi yang terdeteksi
+ */
+export function getBestPositionForItGraduate(currentTitle = '', availablePositions = []) {
+  if (!Array.isArray(availablePositions) || availablePositions.length === 0) {
+    return currentTitle
+  }
+  const sorted = sortPositionsByRelevance(availablePositions)
+  const currentScore = scorePositionRelevance(currentTitle)
+  const topScore = scorePositionRelevance(sorted[0])
+  if (topScore >= 80 && currentScore < 80) {
+    return sorted[0]
+  }
+  return currentTitle || sorted[0]
+}
+

@@ -11,7 +11,10 @@ import {
   generateTailoredParagraph2, 
   formatFullCoverLetterText, 
   formatIndonesianDate,
-  generateNaturalWhatsAppMessage 
+  generateNaturalWhatsAppMessage,
+  sortPositionsByRelevance,
+  isPositionItRelated,
+  getBestPositionForItGraduate 
 } from '../services/coverLetterGenerator'
 
 import CoverLetterPreview from '../components/CoverLetterPreview.vue'
@@ -83,6 +86,17 @@ const activeAiBadge = computed(() => {
     class: 'bg-amber-50 text-amber-700 border-amber-200'
   }
 })
+
+// Urutkan posisi terdeteksi berdasarkan relevansi dengan lulusan IT
+const sortedAvailablePositions = computed(() => {
+  return sortPositionsByRelevance(current.value.availablePositions || [])
+})
+
+async function selectAvailablePosition(pos) {
+  if (current.value.jobTitle === pos) return
+  current.value.jobTitle = pos
+  await triggerAutoTailor()
+}
 
 // WhatsApp Web link generator
 const whatsappLink = computed(() => {
@@ -513,7 +527,40 @@ function loadDemoSample() {
 
             <div>
               <label class="form-label" for="job-title">Posisi yang Dilamar</label>
-              <input id="job-title" v-model="current.jobTitle" type="text" class="form-input" placeholder="Frontend Developer / Marketing / dll." />
+              <input id="job-title" v-model="current.jobTitle" type="text" class="form-input" placeholder="IT Support / Frontend Developer / dll." />
+            </div>
+
+            <!-- Pilihan Posisi Multi-Loker di Poster -->
+            <div v-if="current.availablePositions?.length > 1" class="p-3 bg-indigo-50/80 border border-indigo-200 rounded-2xl space-y-2">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                  <Sparkles class="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Poster Membuka {{ current.availablePositions.length }} Posisi</span>
+                </span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
+                  Prioritas IT Aktif
+                </span>
+              </div>
+              <p class="text-[11px] text-indigo-900/80 leading-relaxed">
+                Sistem otomatis memilih posisi yang paling cocok untuk lulusan Teknik Informatika. Klik posisi jika ingin mengganti:
+              </p>
+              <div class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                <button
+                  v-for="pos in sortedAvailablePositions"
+                  :key="pos"
+                  type="button"
+                  @click="selectAvailablePosition(pos)"
+                  class="px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 border"
+                  :class="current.jobTitle.toLowerCase() === pos.toLowerCase()
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-200 font-semibold'
+                    : isPositionItRelated(pos)
+                      ? 'bg-white text-indigo-800 border-indigo-200 hover:bg-indigo-50 font-medium'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                >
+                  <span v-if="isPositionItRelated(pos)" class="text-[11px]">⭐ Cocok IT</span>
+                  <span>{{ pos }}</span>
+                </button>
+              </div>
             </div>
 
             <!-- Kontak Rekruter -->

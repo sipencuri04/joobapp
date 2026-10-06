@@ -1,6 +1,7 @@
 // Groq API Service for Ultra-Fast Multimodal Vision & Document Tailoring
 
 import { cleanIndonesianPhoneNumber, extractContactsFromText } from './gemini'
+import { getBestPositionForItGraduate } from './coverLetterGenerator'
 
 /** Ambil semua Groq API keys dari localStorage */
 export function getGroqApiKeys() {
@@ -179,10 +180,17 @@ export async function analyzeJobScreenshotWithGroq(dataUrl, apiKeyOrKeys = '') {
 
   const promptText = `
 Analisis gambar poster / screenshot lowongan pekerjaan ini dengan teliti.
+TARGET PELAMAR: Lulusan S1 Teknik Informatika (keahlian: IT Support, Web Development, Programming, Jaringan & Hardware, Troubleshooting PC/CCTV/Jaringan, Pengolahan Data, Sistem Informasi).
+
+PENTING — JIKA POSTER MENCANTUMKAN BANYAK POSISI (MULTI-POSITION HIRING):
+1. Ekstrak SEMUA nama posisi yang dibuka ke dalam array "availablePositions".
+2. Secara otomatis PILIH POSISI YANG PALING COCOK / RELEVAN DENGAN LULUSAN TEKNIK INFORMATIKA (prioritaskan IT Support, Web Developer, Programmer, Software, Network/Jaringan, Teknisi, atau Admin Sistem/Data) sebagai nilai utama "jobTitle"! Jangan memilih posisi seperti Barista, Kitchen Crew, Waiter, dsb jika ada posisi bidang IT/Teknologi/Teknisi di dalam poster tersebut!
+
 Ekstrak semua informasi berikut dan kembalikan HANYA format JSON valid tanpa kata pengantar apapun:
 {
-  "companyName": "Nama Perusahaan / Instansi (atau 'Perusahaan Terkait')",
-  "jobTitle": "Nama Posisi / Pekerjaan yang dicari",
+  "companyName": "Nama Perusahaan / Startup / Cafe / Instansi (e.g. 'KOV KOFFIE' atau sesuai poster)",
+  "jobTitle": "Nama Posisi yang paling relevan untuk pelamar IT (e.g. 'IT Support')",
+  "availablePositions": ["Posisi 1", "Posisi 2", "Posisi 3"],
   "email": "Email rekruter / HRD untuk melamar (prioritaskan @gmail.com atau domain resmi perusahaan jika ada)",
   "phone": "Nomor WhatsApp / Telepon untuk melamar (format nomor saja, e.g. 08123456789 atau 628123456789)",
   "location": "Kota / Lokasi penempatan kerja atau 'Remote' / 'Hybrid' / 'Onsite'",
@@ -191,7 +199,7 @@ Ekstrak semua informasi berikut dan kembalikan HANYA format JSON valid tanpa kat
   "deadline": "Batas akhir pendaftaran jika ada atau '-'",
   "requirements": ["Syarat 1", "Syarat 2", "Kualifikasi 3"],
   "responsibilities": ["Tanggung jawab 1", "Tanggung jawab 2"],
-  "skillsRequired": ["Skill/Tools 1 (e.g. PHP, CodeIgniter, Vue.js, MySQL)"],
+  "skillsRequired": ["Skill/Tools 1"],
   "summary": "Ringkasan singkat lowongan ini dalam 2-3 kalimat bahasa Indonesia",
   "rawText": "Teks mentah yang berhasil dibaca dari gambar (OCR)"
 }
@@ -225,6 +233,11 @@ Pastikan nomor WhatsApp dan email diekstrak seakurat mungkin jika tertera di gam
 
       const result = parseJsonSafely(textOutput)
       if (!result) throw new Error('Format output Groq bukan JSON valid.')
+
+      // Prioritaskan posisi yang relevan dengan lulusan IT jika ada multiple positions
+      if (Array.isArray(result.availablePositions) && result.availablePositions.length > 0) {
+        result.jobTitle = getBestPositionForItGraduate(result.jobTitle, result.availablePositions)
+      }
 
       if (!result.email || !result.phone) {
         const contacts = extractContactsFromText(result.rawText || '')

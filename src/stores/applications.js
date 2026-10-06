@@ -20,6 +20,7 @@ export const useApplicationStore = defineStore('application', {
         skillsRequired: [],
         summary: '',
         rawText: '',
+        availablePositions: [],
         // Tailored contents
         tailoredCoverLetter: '',
         coverLetterParagraph1: '',
@@ -63,6 +64,7 @@ export const useApplicationStore = defineStore('application', {
       this.currentJob.skillsRequired = Array.isArray(data.skillsRequired) ? data.skillsRequired : []
       this.currentJob.summary = data.summary || ''
       this.currentJob.rawText = data.rawText || ''
+      this.currentJob.availablePositions = Array.isArray(data.availablePositions) ? data.availablePositions : (data.jobTitle ? [data.jobTitle] : [])
     },
 
     setCurrentJobData(data) {
