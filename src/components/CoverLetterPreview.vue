@@ -9,7 +9,8 @@ import {
   generateTailoredParagraph1, 
   generateTailoredParagraph2, 
   formatFullCoverLetterText, 
-  formatIndonesianDate 
+  formatIndonesianDate,
+  cleanLocationCity
 } from '../services/coverLetterGenerator'
 
 const props = defineProps({
@@ -96,19 +97,9 @@ const currentCategory = computed(() => {
   )
 })
 
-// Helper untuk format kota perusahaan
+// Helper untuk format kota perusahaan yang bersih & baku
 function resolveCompanyCity(location, company) {
-  if (location && location.trim() && !location.toLowerCase().includes('remote')) {
-    const loc = location.trim()
-    return loc.toLowerCase().startsWith('kota ') || loc.toLowerCase().startsWith('kabupaten ') 
-      ? loc 
-      : `Kota ${loc}`
-  }
-  if (company && company.trim()) {
-    const cleanComp = company.replace(/^(PT|CV|UD|Firma)\s+/i, '').trim()
-    return `Kota ${cleanComp}`
-  }
-  return 'Di Tempat'
+  return cleanLocationCity(location, company)
 }
 
 // Adapt / tailor letter data based on props & candidate profile

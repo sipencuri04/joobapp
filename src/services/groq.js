@@ -193,7 +193,7 @@ Ekstrak semua informasi berikut dan kembalikan HANYA format JSON valid tanpa kat
   "availablePositions": ["Posisi 1", "Posisi 2", "Posisi 3"],
   "email": "Email rekruter / HRD untuk melamar (prioritaskan @gmail.com atau domain resmi perusahaan jika ada)",
   "phone": "Nomor WhatsApp / Telepon untuk melamar (format nomor saja, e.g. 08123456789 atau 628123456789)",
-  "location": "Kota / Lokasi penempatan kerja atau 'Remote' / 'Hybrid' / 'Onsite'",
+  "location": "Nama kota penempatan jika tertera jelas (e.g. 'Magelang', 'Yogyakarta'). Jika tidak ada kota spesifik, kosongkan saja '' (jangan isi 'New Outlet' atau 'tidak disebutkan')",
   "employmentType": "Full Time / Part Time / Internship / Freelance / Kontrak",
   "salary": "Range gaji jika disebutkan atau 'Kompetitif / Tidak disebutkan'",
   "deadline": "Batas akhir pendaftaran jika ada atau '-'",

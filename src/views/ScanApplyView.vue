@@ -14,7 +14,8 @@ import {
   generateNaturalWhatsAppMessage,
   sortPositionsByRelevance,
   isPositionItRelated,
-  getBestPositionForItGraduate 
+  getBestPositionForItGraduate,
+  cleanLocationCity
 } from '../services/coverLetterGenerator'
 
 import CoverLetterPreview from '../components/CoverLetterPreview.vue'
@@ -221,7 +222,7 @@ async function triggerAutoTailor() {
       const paragraph1 = generateTailoredParagraph1(jobInfo, applicantProfileForGen)
       const paragraph2 = generateTailoredParagraph2()
       const city = profileStore.profile.location ? profileStore.profile.location.split(',').pop().trim() : 'Magelang'
-      const companyCity = current.value.location || (current.value.companyName ? `Kota ${current.value.companyName.replace(/^(PT|CV)\s+/i, '')}` : 'Di Tempat')
+      const companyCity = cleanLocationCity(current.value.location, current.value.companyName)
       const today = formatIndonesianDate()
 
       const fullCl = formatFullCoverLetterText({

@@ -105,6 +105,71 @@ export function formatIndonesianDate(date = new Date()) {
 }
 
 /**
+ * Bersihkan dan validasi kota perusahaan untuk surat lamaran formal.
+ * Jika lokasi tidak spesifik / tidak ada / outlet / cabang / tidak disebutkan,
+ * JANGAN ditulis "Kota...", kembalikan 'Di Tempat'.
+ */
+export function cleanLocationCity(location = '', companyName = '') {
+  if (!location || typeof location !== 'string') return 'Di Tempat'
+
+  let loc = location.trim()
+  if (!loc || loc === '-' || loc === '.' || loc.toLowerCase() === 'n/a') return 'Di Tempat'
+
+  const lower = loc.toLowerCase()
+
+  // Kata-kata yang menandakan bukan nama kota spesifik
+  const invalidKeywords = [
+    'tidak disebutkan',
+    'tidak spesifik',
+    'tidak diketahui',
+    'not specified',
+    'new outlet',
+    'outlet baru',
+    'outlet',
+    'kantor',
+    'cabang baru',
+    'cabang',
+    'store',
+    'toko',
+    'walk in',
+    'interview',
+    'remote',
+    'wfh',
+    'wfo',
+    'hybrid',
+    'di tempat',
+    'lokasi',
+    'indonesia'
+  ]
+
+  for (const kw of invalidKeywords) {
+    if (lower.includes(kw)) {
+      return 'Di Tempat'
+    }
+  }
+
+  // Jika nama lokasi mirip/sama dengan nama perusahaan, bukan nama kota
+  if (companyName && typeof companyName === 'string') {
+    const cleanComp = companyName.toLowerCase().replace(/^(pt|cv|ud|firma)\s+/i, '').trim()
+    if (cleanComp && (lower.includes(cleanComp) || cleanComp.includes(lower))) {
+      return 'Di Tempat'
+    }
+  }
+
+  // Jika terlalu panjang (> 30 karakter), kemungkinan deskripsi alamat bukan nama kota
+  if (loc.length > 30) {
+    return 'Di Tempat'
+  }
+
+  // Jika sudah ada kata Kota / Kabupaten / Kab.
+  if (/^(kota|kabupaten|kab\.)\s+/i.test(loc)) {
+    return loc
+  }
+
+  return `Kota ${loc}`
+}
+
+/**
  * Buat Paragraf 1 (Inti Kualifikasi & Pengalaman) yang otomatis menyesuaikan bidang loker
  */
 export function generateTailoredParagraph1(jobInfo = {}, applicantProfile = {}) {
