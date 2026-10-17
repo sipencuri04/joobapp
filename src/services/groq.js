@@ -2,6 +2,7 @@
 
 import { cleanIndonesianPhoneNumber, extractContactsFromText } from './gemini'
 import { getBestPositionForItGraduate } from './coverLetterGenerator'
+import { buildJobTextPrompt } from './jobTextPrompt'
 
 /** Ambil semua Groq API keys dari localStorage */
 export function getGroqApiKeys() {
@@ -401,4 +402,44 @@ Kembalikan HANYA format JSON valid berikut:
   }
 
   throw lastError || new Error('Gagal tailoring dokumen dengan Groq.')
+}
+
+
+/**
+ * Analisis TEKS lowongan (link JobStreet / teks tempel) dengan model teks Groq
+ */
+export async function analyzeJobTextWithGroq(jobText, keysOverride) {
+  const keys = (Array.isArray(keysOverride) && keysOverride.filter(k => k && k.trim()).length)
+    ? keysOverride.filter(k => k && k.trim())
+    : getGroqApiKeys()
+  if (!keys.length) throw new Error('Groq API Key belum diisi. Masukkan API Key Groq di menu Pengaturan.')
+
+  const textModels = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant']
+  let lastError = null
+  for (const model of textModels) {
+    try {
+      const response = await fetchGroqWithRotation(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          model,
+          messages: [{ role: 'user', content: buildJobTextPrompt(jobText) }],
+          temperature: 0.1,
+          response_format: { type: 'json_object' }
+        },
+        keys
+      )
+      const resData = await response.json()
+      const parsed = parseJsonSafely(resData.choices?.[0]?.message?.content)
+      if (!parsed) throw new Error('Respon Groq bukan JSON valid.')
+      if (Array.isArray(parsed.availablePositions) && parsed.availablePositions.length > 1) {
+        parsed.jobTitle = getBestPositionForItGraduate(parsed.jobTitle, parsed.availablePositions)
+      }
+      if (parsed.phone) parsed.phone = cleanIndonesianPhoneNumber(parsed.phone)
+      return parsed
+    } catch (err) {
+      console.warn(`Groq text model ${model} failed:`, err.message)
+      lastError = err
+    }
+  }
+  throw lastError || new Error('Gagal menganalisis teks lowongan dengan Groq.')
 }

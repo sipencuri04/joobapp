@@ -1,7 +1,7 @@
 // Unified AI Manager (Supports both Google Gemini & Groq LPU API)
 
-import { analyzeJobScreenshot, tailorApplicationDocuments, getMockJobData } from './gemini'
-import { analyzeJobScreenshotWithGroq, tailorApplicationDocumentsWithGroq } from './groq'
+import { analyzeJobScreenshot, tailorApplicationDocuments, getMockJobData, analyzeJobText } from './gemini'
+import { analyzeJobScreenshotWithGroq, tailorApplicationDocumentsWithGroq, analyzeJobTextWithGroq } from './groq'
 import { useSettingsStore } from '../stores/settings'
 
 /**
@@ -37,6 +37,33 @@ export async function executeJobScan(imageBase64) {
 
   // Fallback demo mock
   return getMockJobData()
+}
+
+/**
+ * Analisis TEKS lowongan (dari link JobStreet / teks tempel) dengan provider AI aktif.
+ * Mengembalikan null jika tidak ada API Key (pemanggil memakai hasil heuristik).
+ */
+export async function executeJobTextScan(jobText) {
+  const settings = useSettingsStore()
+  const provider = settings.effectiveAiProvider
+
+  if (provider === 'groq') {
+    try {
+      return await analyzeJobTextWithGroq(jobText, settings.groqApiKeys)
+    } catch (groqErr) {
+      if (settings.hasGeminiKey) return await analyzeJobText(jobText, settings.geminiApiKey)
+      throw groqErr
+    }
+  }
+  if (provider === 'gemini') {
+    try {
+      return await analyzeJobText(jobText, settings.geminiApiKey)
+    } catch (geminiErr) {
+      if (settings.hasGroqKey) return await analyzeJobTextWithGroq(jobText, settings.groqApiKeys)
+      throw geminiErr
+    }
+  }
+  return null
 }
 
 /**

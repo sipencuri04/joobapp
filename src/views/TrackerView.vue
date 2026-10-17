@@ -113,7 +113,7 @@ function exportCsv() {
     return
   }
 
-  const headers = ['Perusahaan', 'Posisi', 'Email', 'No HP', 'Status', 'Tanggal Apply', 'Catatan']
+  const headers = ['Perusahaan', 'Posisi', 'Email', 'No HP', 'Status', 'Tanggal Apply', 'Link Lowongan', 'Catatan']
   const rows = appStore.applications.map(a => [
     `"${a.companyName || ''}"`,
     `"${a.positionTitle || ''}"`,
@@ -121,6 +121,7 @@ function exportCsv() {
     `"${a.contactPhone || ''}"`,
     `"${a.status || ''}"`,
     `"${formatDate(a.appliedAt)}"`,
+    `"${a.jobUrl || ''}"`,
     `"${(a.notes || '').replace(/"/g, '""')}"`
   ])
 
@@ -271,6 +272,17 @@ function exportCsv() {
                     >
                       <MessageSquare class="w-4 h-4" />
                     </button>
+                    <a
+                      v-if="app.jobUrl"
+                      :href="app.jobUrl"
+                      target="_blank"
+                      rel="noopener"
+                      class="btn-icon w-10 h-10 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                      title="Buka lowongan di JobStreet"
+                      aria-label="Buka lowongan di JobStreet"
+                    >
+                      <ExternalLink class="w-4 h-4" />
+                    </a>
                     <button
                       @click="handleDelete(app.id)"
                       class="btn-icon-danger w-10 h-10"
@@ -358,7 +370,17 @@ function exportCsv() {
               <MessageSquare class="w-4 h-4" />
               <span>WhatsApp</span>
             </button>
-            <div v-if="!app.contactEmail && !app.contactPhone" class="flex-1 text-xs text-slate-400">Tidak ada kontak</div>
+            <a
+              v-if="app.jobUrl"
+              :href="app.jobUrl"
+              target="_blank"
+              rel="noopener"
+              class="btn btn-sm flex-1 bg-sky-50 text-sky-700 hover:bg-sky-100 active:bg-sky-200"
+            >
+              <ExternalLink class="w-4 h-4" />
+              <span>JobStreet</span>
+            </a>
+            <div v-if="!app.contactEmail && !app.contactPhone && !app.jobUrl" class="flex-1 text-xs text-slate-400">Tidak ada kontak</div>
             <button
               @click="handleDelete(app.id)"
               class="btn-icon-danger"

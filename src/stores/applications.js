@@ -21,6 +21,10 @@ export const useApplicationStore = defineStore('application', {
         summary: '',
         rawText: '',
         availablePositions: [],
+        // Sumber lowongan: 'screenshot' | 'jobstreet' | 'text'
+        source: '',
+        sourceUrl: '',
+        companyLogo: '',
         // Tailored contents
         tailoredCoverLetter: '',
         coverLetterParagraph1: '',
@@ -48,6 +52,20 @@ export const useApplicationStore = defineStore('application', {
 
     setScreenshot(dataUrl) {
       this.currentJob.screenshotDataUrl = dataUrl
+      this.currentJob.source = 'screenshot'
+      this.currentJob.sourceUrl = ''
+      this.currentJob.companyLogo = ''
+    },
+
+    /** Kosongkan lowongan aktif sebelum memuat lowongan baru (agar email/WA lama tidak terbawa). */
+    startNewJob({ source = '', sourceUrl = '', companyLogo = '' } = {}) {
+      const keepArrays = ['requirements', 'responsibilities', 'skillsRequired', 'availablePositions', 'highlightedSkills', 'selectedPortfolioIds']
+      Object.keys(this.currentJob).forEach(k => {
+        this.currentJob[k] = keepArrays.includes(k) ? [] : ''
+      })
+      this.currentJob.source = source
+      this.currentJob.sourceUrl = sourceUrl
+      this.currentJob.companyLogo = companyLogo
     },
 
     setDetectedJob(data) {
@@ -121,7 +139,8 @@ export const useApplicationStore = defineStore('application', {
         salary: this.currentJob.salary,
         status: customStatus, // 'Draft', 'Applied', 'Interview', 'Rejected', 'Offered'
         appliedAt: new Date().toISOString(),
-        channelUsed: channel, // 'gmail', 'whatsapp', 'website', 'manual'
+        channelUsed: channel, // 'gmail', 'whatsapp', 'jobstreet', 'website', 'manual'
+        jobUrl: this.currentJob.sourceUrl || '',
         tailoredCoverLetter: this.currentJob.tailoredCoverLetter,
         tailoredEmailSubject: this.currentJob.tailoredEmailSubject,
         tailoredWhatsAppMessage: this.currentJob.tailoredWhatsAppMessage,

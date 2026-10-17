@@ -1,3 +1,4 @@
+import { buildJobTextPrompt } from './jobTextPrompt'
 // Google Gemini API Service for Multimodal Screenshot Analysis & Document Tailoring
 import { 
   generateTailoredParagraph1, 
@@ -286,6 +287,20 @@ Pastikan alamat email dan nomor telepon diekstrak seakurat mungkin jika tertera 
     console.error('Gemini vision analysis error:', error)
     throw error
   }
+}
+
+/**
+ * Analisis TEKS lowongan (link JobStreet / teks tempel) dengan Gemini
+ */
+export async function analyzeJobText(jobText, explicitApiKey = '') {
+  const apiKey = explicitApiKey || getGeminiApiKey()
+  if (!apiKey) throw new Error('Gemini API Key belum diisi.')
+  const result = await callGeminiApi(buildJobTextPrompt(jobText), null, 'image/jpeg', apiKey)
+  if (Array.isArray(result.availablePositions) && result.availablePositions.length > 1) {
+    result.jobTitle = getBestPositionForItGraduate(result.jobTitle, result.availablePositions)
+  }
+  if (result.phone) result.phone = cleanIndonesianPhoneNumber(result.phone)
+  return result
 }
 
 /**

@@ -84,6 +84,16 @@ const sections = computed(() => [
 
 const activeSectionMeta = computed(() => sections.value.find(sec => sec.key === activeSection.value) || sections.value[0])
 
+const sectionTabsRef = ref(null)
+function selectSection(key) {
+  activeSection.value = key
+  // Pastikan tab aktif terlihat penuh & bawa user ke awal konten
+  requestAnimationFrame(() => {
+    const el = sectionTabsRef.value?.querySelector(`[data-key="${key}"]`)
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  })
+}
+
 function triggerSave() {
   profileStore.persist()
   savedNotification.value = true
@@ -258,22 +268,29 @@ function handleResetDefaults() {
       <span class="font-medium">{{ syncNotification }}</span>
     </div>
 
-    <!-- Navigasi Seksi: dropdown -->
-    <div class="sticky top-14 lg:top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2 bg-slate-50/95 backdrop-blur-md lg:static lg:bg-transparent lg:backdrop-blur-none lg:py-0">
-      <div class="relative w-full sm:max-w-xs">
-        <component
-          :is="activeSectionMeta.icon"
-          class="w-[18px] h-[18px] text-indigo-600 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-        />
-        <select
-          v-model="activeSection"
-          class="form-select pl-11 font-semibold shadow-xs"
-          aria-label="Pilih bagian data"
+    <!-- Navigasi Seksi: tab chip (geser horizontal di mobile, satu ketukan) -->
+    <div class="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 lg:mx-0 py-2 bg-slate-50/95 backdrop-blur-md lg:static lg:bg-transparent lg:backdrop-blur-none lg:py-0">
+      <div
+        ref="sectionTabsRef"
+        class="flex gap-2 overflow-x-auto hide-scrollbar overscroll-x-contain px-4 sm:px-6 lg:px-0 lg:flex-wrap"
+        role="tablist"
+        aria-label="Pilih bagian data"
+      >
+        <button
+          v-for="sec in sections"
+          :key="sec.key"
+          type="button"
+          role="tab"
+          :data-key="sec.key"
+          :aria-selected="activeSection === sec.key"
+          @click="selectSection(sec.key)"
+          class="chip"
+          :class="activeSection === sec.key ? 'chip-active' : 'chip-idle'"
         >
-          <option v-for="sec in sections" :key="sec.key" :value="sec.key">
-            {{ sec.label }}{{ sec.count !== undefined ? ` (${sec.count})` : '' }}
-          </option>
-        </select>
+          <component :is="sec.icon" class="w-4 h-4" :class="activeSection === sec.key ? 'text-indigo-300' : 'text-slate-400'" />
+          <span>{{ sec.label }}</span>
+          <span v-if="sec.count !== undefined" class="text-[11px] font-bold opacity-60">{{ sec.count }}</span>
+        </button>
       </div>
     </div>
 
