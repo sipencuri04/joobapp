@@ -212,6 +212,15 @@ if (savedCv) {
       parsed.educationHeader = '2020 - 2024 | S1 Teknik Informatika'
       parsed.educationDesc = 'Fokus studi pada rekayasa perangkat lunak, pengembangan sistem web, arsitektur jaringan komputer, basis data, serta pemecahan masalah komputasi dan implementasi teknologi informasi.'
     }
+    if (parsed.phone) {
+      parsed.phone = parsed.phone.replace(/^[\*\s•\-,]+/, '').replace(/[,;]+$/, '').trim()
+    }
+    if (parsed.email) {
+      parsed.email = parsed.email.replace(/^[\*\s•\-,]+/, '').replace(/[,;]+$/, '').trim()
+    }
+    if (parsed.location) {
+      parsed.location = parsed.location.replace(/^[\*\s•\-,]+/, '').replace(/[,;]+$/, '').trim()
+    }
     cvData.value = { ...cvData.value, ...parsed }
   } catch (e) {
     console.warn('Could not parse saved custom CV:', e)

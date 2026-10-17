@@ -14,8 +14,8 @@ export function exportCvToTextPdf(cvData = {}, filename = 'CV_Pelamar.pdf') {
 
   const pageWidth = 210
   const pageHeight = 297
-  const margin = 18
-  const contentWidth = pageWidth - (margin * 2) // 174mm
+  const margin = 16
+  const contentWidth = pageWidth - (margin * 2) // 178mm
   let y = margin
 
   const checkPageBreak = (neededHeight) => {
@@ -34,72 +34,85 @@ export function exportCvToTextPdf(cvData = {}, filename = 'CV_Pelamar.pdf') {
   doc.setTextColor(0, 0, 0)
   doc.text(cvData.fullName || 'Agung Setyawan', margin, y + 6)
 
-  // Kanan: Kontak (Telepon, Email, Lokasi)
+  // Kanan: Kontak (Telepon, Email, Lokasi) - dibersihkan dari simbol kotor
   doc.setFont('times', 'normal')
-  doc.setFontSize(9)
+  doc.setFontSize(9.5)
+  doc.setTextColor(30, 30, 30)
   const contactLines = []
-  if (cvData.phone) contactLines.push(cvData.phone)
-  if (cvData.email) contactLines.push(cvData.email)
-  if (cvData.location) contactLines.push(cvData.location)
-
-  let contactY = y + 1
-  for (const line of contactLines) {
-    doc.text(line, pageWidth - margin, contactY, { align: 'right' })
-    contactY += 4.5
+  if (cvData.phone) {
+    const cleanPhone = cvData.phone.replace(/^[\*\s•\-,]+/, '').replace(/[,;]+$/, '').trim()
+    if (cleanPhone) contactLines.push(cleanPhone)
+  }
+  if (cvData.email) {
+    const cleanEmail = cvData.email.replace(/^[\*\s•\-,]+/, '').replace(/[,;]+$/, '').trim()
+    if (cleanEmail) contactLines.push(cleanEmail)
+  }
+  if (cvData.location) {
+    const cleanLoc = cvData.location.replace(/^[\*\s•\-,]+/, '').replace(/[,;]+$/, '').trim()
+    if (cleanLoc) contactLines.push(cleanLoc)
   }
 
-  y = Math.max(y + 13, contactY + 3)
+  let contactY = y + 1.5
+  for (const line of contactLines) {
+    doc.text(line, pageWidth - margin, contactY, { align: 'right' })
+    contactY += 4.8
+  }
+
+  y = Math.max(y + 14, contactY + 3)
 
   // Helper pembuat garis judul bagian (Section Heading)
   const addSectionTitle = (title) => {
-    checkPageBreak(16)
+    checkPageBreak(18)
     y += 2
     doc.setFont('times', 'bold')
-    doc.setFontSize(11)
+    doc.setFontSize(11.5)
     doc.setTextColor(0, 0, 0)
     doc.text(title, margin, y)
-    y += 1.5
-    doc.setLineWidth(0.4)
+    y += 1.8
+    doc.setLineWidth(0.6)
     doc.setDrawColor(0, 0, 0)
     doc.line(margin, y, pageWidth - margin, y)
-    y += 5
+    y += 5.5
   }
 
   // ── 1. TENTANG SAYA ──────────────────────────────────────────────────
   if (cvData.aboutMe && cvData.aboutMe.trim()) {
     addSectionTitle('Tentang Saya')
     doc.setFont('times', 'normal')
-    doc.setFontSize(9.5)
+    doc.setFontSize(10)
     doc.setTextColor(20, 20, 20)
     const bioText = cvData.aboutMe.trim()
     const bioLines = doc.splitTextToSize(bioText, contentWidth)
-    checkPageBreak((bioLines.length * 4.6) + 3)
-    doc.text(bioText, margin, y, { align: 'justify', maxWidth: contentWidth, lineHeightFactor: 1.38 })
-    y += (bioLines.length * 4.6) + 3
+    for (const bLine of bioLines) {
+      checkPageBreak(5.2)
+      doc.text(bLine, margin, y)
+      y += 4.8
+    }
+    y += 2
   }
 
   // ── 2. PENDIDIKAN ────────────────────────────────────────────────────
   if (cvData.educationHeader) {
     addSectionTitle('Pendidikan')
     doc.setFont('times', 'bold')
-    doc.setFontSize(10)
+    doc.setFontSize(10.5)
     doc.setTextColor(0, 0, 0)
     checkPageBreak(6)
     doc.text(cvData.educationHeader.trim(), margin, y)
-    y += 4.5
+    y += 5
 
     if (cvData.educationDesc && cvData.educationDesc.trim()) {
       doc.setFont('times', 'normal')
-      doc.setFontSize(9.5)
+      doc.setFontSize(10)
       doc.setTextColor(20, 20, 20)
       const eduLines = doc.splitTextToSize(cvData.educationDesc.trim(), contentWidth)
       for (const eLine of eduLines) {
-        checkPageBreak(5)
+        checkPageBreak(5.2)
         doc.text(eLine, margin, y)
-        y += 4.3
+        y += 4.8
       }
     }
-    y += 2.5
+    y += 2
   }
 
   // ── 3. PENGALAMAN (PROYEK) ──────────────────────────────────────────
@@ -107,30 +120,32 @@ export function exportCvToTextPdf(cvData = {}, filename = 'CV_Pelamar.pdf') {
     addSectionTitle('Pengalaman')
 
     for (const proj of cvData.projects) {
-      checkPageBreak(12)
-      // Titik Bullet
+      checkPageBreak(14)
+      // Titik Bullet sejajar dengan judul
       doc.setFillColor(0, 0, 0)
-      doc.circle(margin + 1.2, y - 1, 0.8, 'F')
+      doc.circle(margin + 1.5, y - 1.2, 0.75, 'F')
 
       // Judul Proyek
       doc.setFont('times', 'bold')
-      doc.setFontSize(10)
+      doc.setFontSize(10.5)
       doc.setTextColor(0, 0, 0)
-      doc.text(`Project — ${proj.title || ''}`, margin + 4, y)
-      y += 4.5
+      doc.text(`Project — ${proj.title || ''}`, margin + 5, y)
+      y += 5
 
       // Deskripsi Proyek
       if (proj.description && proj.description.trim()) {
         doc.setFont('times', 'normal')
-        doc.setFontSize(9.5)
+        doc.setFontSize(10)
         doc.setTextColor(20, 20, 20)
         const descText = proj.description.trim()
-        const descLines = doc.splitTextToSize(descText, contentWidth - 4)
-        checkPageBreak((descLines.length * 4.6) + 3)
-        doc.text(descText, margin + 4, y, { align: 'justify', maxWidth: contentWidth - 4, lineHeightFactor: 1.38 })
-        y += (descLines.length * 4.6) + 3
+        const descLines = doc.splitTextToSize(descText, contentWidth - 5)
+        for (const dLine of descLines) {
+          checkPageBreak(5.2)
+          doc.text(dLine, margin + 5, y)
+          y += 4.8
+        }
       }
-      y += 2
+      y += 2.5
     }
   }
 
@@ -138,24 +153,24 @@ export function exportCvToTextPdf(cvData = {}, filename = 'CV_Pelamar.pdf') {
   if (cvData.reference && cvData.reference.name && cvData.reference.name.trim()) {
     addSectionTitle('Reference')
     doc.setFont('times', 'bold')
-    doc.setFontSize(10)
+    doc.setFontSize(10.5)
     doc.setTextColor(0, 0, 0)
     checkPageBreak(6)
     doc.text(cvData.reference.name.trim(), margin, y)
-    y += 4.5
+    y += 5
 
     doc.setFont('times', 'normal')
-    doc.setFontSize(9.5)
+    doc.setFontSize(10)
     doc.setTextColor(20, 20, 20)
     if (cvData.reference.position) {
-      checkPageBreak(5)
+      checkPageBreak(5.2)
       doc.text(cvData.reference.position.trim(), margin, y)
-      y += 4.3
+      y += 4.8
     }
     if (cvData.reference.phone) {
-      checkPageBreak(5)
+      checkPageBreak(5.2)
       doc.text(cvData.reference.phone.trim(), margin, y)
-      y += 4.3
+      y += 4.8
     }
   }
 
@@ -176,8 +191,8 @@ export function exportCoverLetterToTextPdf(letterData = {}, filename = 'Surat_La
 
   const pageWidth = 210
   const pageHeight = 297
-  const margin = 22
-  const contentWidth = pageWidth - (margin * 2) // 166mm
+  const margin = 20
+  const contentWidth = pageWidth - (margin * 2) // 170mm
   let y = margin
 
   const checkPageBreak = (neededHeight) => {
@@ -190,7 +205,7 @@ export function exportCoverLetterToTextPdf(letterData = {}, filename = 'Surat_La
   }
 
   doc.setFont('times', 'normal')
-  doc.setFontSize(11.5)
+  doc.setFontSize(11)
   doc.setTextColor(0, 0, 0)
 
   // 1. Kota dan Tanggal (Kanan Atas)
@@ -251,27 +266,33 @@ export function exportCoverLetterToTextPdf(letterData = {}, filename = 'Surat_La
 
   y += 4
 
-  // 7. Paragraf 1 (Kualifikasi & Pengalaman) — Rata Kanan Kiri (Justify)
+  // 7. Paragraf 1 (Kualifikasi & Pengalaman) - Render per-baris rapi
   if (letterData.bodyParagraph1) {
     const p1Text = `        ${letterData.bodyParagraph1.trim()}`
     const p1Lines = doc.splitTextToSize(p1Text, contentWidth)
-    checkPageBreak((p1Lines.length * 5.6) + 4)
-    doc.text(p1Text, margin, y, { align: 'justify', maxWidth: contentWidth, lineHeightFactor: 1.42 })
-    y += (p1Lines.length * 5.6) + 4
+    for (const line of p1Lines) {
+      checkPageBreak(5.8)
+      doc.text(line, margin, y)
+      y += 5.2
+    }
+    y += 4
   }
 
-  // 8. Paragraf 2 (Lampiran & Penutup) — Rata Kanan Kiri (Justify)
+  // 8. Paragraf 2 (Lampiran & Penutup) - Render per-baris rapi
   if (letterData.bodyParagraph2) {
     const p2Text = `        ${letterData.bodyParagraph2.trim()}`
     const p2Lines = doc.splitTextToSize(p2Text, contentWidth)
-    checkPageBreak((p2Lines.length * 5.6) + 4)
-    doc.text(p2Text, margin, y, { align: 'justify', maxWidth: contentWidth, lineHeightFactor: 1.42 })
-    y += (p2Lines.length * 5.6) + 6
+    for (const line of p2Lines) {
+      checkPageBreak(5.8)
+      doc.text(line, margin, y)
+      y += 5.2
+    }
+    y += 6
   }
 
-  // 9. Tanda Tangan (Diposisikan agak ke bawah secara proporsional mendekati footer)
-  const targetTtdY = Math.max(y + 16, pageHeight - margin - 38)
-  if (targetTtdY + 30 > pageHeight - margin) {
+  // 9. Tanda Tangan
+  const targetTtdY = Math.max(y + 14, pageHeight - margin - 35)
+  if (targetTtdY + 28 > pageHeight - margin) {
     doc.addPage()
     y = margin + 10
   } else {
@@ -279,7 +300,7 @@ export function exportCoverLetterToTextPdf(letterData = {}, filename = 'Surat_La
   }
 
   doc.text('Hormat saya,', margin, y)
-  y += 24
+  y += 22
   doc.text(letterData.applicantName || 'Pelamar', margin, y)
 
   doc.save(filename)
