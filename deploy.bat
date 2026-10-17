@@ -53,9 +53,9 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [4/4] Mengupload ke Vercel Production...
-call vercel deploy --prod --yes
+call vercel deploy --prod --yes --scope team_7EESvKgJadkpODlLpeECjT9V
 if %errorlevel% neq 0 (
-    call npx vercel deploy --prod --yes
+    call npx vercel deploy --prod --yes --scope team_7EESvKgJadkpODlLpeECjT9V
 )
 if %errorlevel% neq 0 (
     color 0c
